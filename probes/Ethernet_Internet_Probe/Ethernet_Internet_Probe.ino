@@ -1,3 +1,5 @@
+#include <EEPROM.h>
+
 #include <SPI.h>
 
 #include <Dhcp.h>
@@ -13,50 +15,74 @@
 
 #include <Time.h>
 
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 
 // base configs and vars
-const unsigned int messageIdHeartbeat = 1;
-const unsigned int messageIdRestart = 2;
-const unsigned int messageIdPayload = 3;
-const String phone = "+4915259723556";
-const String marsServer = "";
+char messageIdHeartbeat[] = "HEARTBEAT";
+char messageIdRestart[] = "RESTART";
+char messageIdPayload[] = "PAYLOAD";
+
+// mars phones
+//const char phone[] = "+4915259723556";
+//const char phone[] = "+265884781634";
+//String phone = "+491784049573";
+
+// mars server
+char marsServer[] = "192.168.1.4";
+int marsPort = 3000;
+char marsUrl[] = "/messages/create_from_probe";
+
+EthernetClient marsClient;
+
+// ICMP ping communication
 byte icmpServer[] = { 
   8,8,4,4};
-SOCKET pingSocket = 0;
+SOCKET icmpSocket = 2; // critical setting, only 4 avail, unknown which is used by which lib
 
-//byte httpServer[] = { 173, 194, 35, 142 }; // Google
+// HTTP communication
 char httpServer[] = "www.google.com";
-EthernetClient ether;
-const unsigned long httpTimeout = 20000;
+const unsigned int httpTimeout = 20000;
+EthernetClient httpClient;
 
-unsigned int localPort = 8888;      // local port to listen for UDP packets
-IPAddress timeServer(192, 43, 244, 18); // time.nist.gov NTP server
-const int NTP_PACKET_SIZE= 48; // NTP time stamp is in the first 48 bytes of the message
-byte packetBuffer[ NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets 
-EthernetUDP Udp; // A UDP instance to let us send and receive packets over UDP
-const  int timeZoneOffset = +2;
+// NTP communication
+unsigned int ntpLocalPort = 8888;
+IPAddress ntpTimeServer(192, 43, 244, 18); // time.nist.gov NTP server
+const int NTP_PACKET_SIZE= 48;
+byte ntpPacketBuffer[NTP_PACKET_SIZE];
+EthernetUDP ntpClient;
+const int timeZoneOffset = +2;
 
 // device configs
-unsigned int customerId = 0;
-unsigned int deviceId = 0;
-//String phone = "+265884781634";
-//const String message = "Hi Steve, this is a friendly test message from your Arduino board in Germany.";
+const char* customerId = "1";
+const char* deviceId = "38";
 
 // device counters
-unsigned int incomingMessageCount = 0;
-unsigned int outgoingMessageCount = 0;
-unsigned int restartCount = 0;
+byte incomingMessageCount = 0;
+byte outgoingMessageCount = 0;
+byte restartCount = 0;
 
 // device board layout
+int pinAnalogTemp = 0;
 int pinLed = 3;
 int pinButton = 5;
-int pinGprsRx = 7;
-int pinGrpsTx = 8;
-int pinGprsPower = 9;
-SoftwareSerial gprs(7, 8);
+//int pinGprsRx = 7;
+//int pinGrpsTx = 8;
+//int pinGprsPower = 9;
+//SoftwareSerial gprs(7, 8);
 byte mac[] = { 
   0x90, 0xA2, 0xDA, 0x0D, 0x86, 0x4C };
+
+// probe values
+int currentPayloadValue1 = 0;
+int previousPayloadValue1 = 0;
+const int payloadValue1Threshold = 15;
+int currentPayloadValue2 = 0;
+int previousPayloadValue2 = 0;
+const int payloadValue2Threshold = 16500;
+
+const int restartCountAdr = 0;
+const int outgoingMessageCountAdr = 1;
+const int incomingMessageCountAdr = 2;
 
 // *******************************************************
 // arduino methods
@@ -68,128 +94,148 @@ void setup() {
   }
   Serial.println("setup");
 
-  //  setTime(23,59,59,24,12,2011); // just to begin with something
+  //oneTimeEepromInit();
+  eepromRead();
 
-  //  gprs_powerUpOrDown();
-  //  delay(500);
-  //  gprs_setup();
-  //  delay(500);
-  //  grps_setTime();
-  //  delay(500);
-
+  setTime(23,59,59,24,12,2011); // just to begin with something
   ether_setup();
-  setSyncProvider(ether_syncTime);
+//  setSyncProvider(ether_syncTime);
+  //  setSyncIntervall(43200); // get new time every 12 hours
 
-  //  printTime();
+  // disable SD interface for ethernet shield (as in http://arduino.cc/forum/index.php/topic,98607.0.html)
+  //  pinMode(4,OUTPUT);
+  //  digitalWrite(4,HIGH);
 
-  restartCount++;
-  sendRestart();
-  //  Alarm.timerRepeat(60, sendHeartbeat);
+  previousPayloadValue1 = 0;
+  currentPayloadValue1 = 0;
+  previousPayloadValue2 = 0;
+  currentPayloadValue2 = 0;
+
+  // wait 1 minute before sending out restart message
+  delay(60000);
+  restart();
+
+  //  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
+  Alarm.timerRepeat(240, heartbeat); // 14400 sec = 4 h
 
   // init board layout  
-  pinMode(pinButton, INPUT);
-  pinMode(pinLed, OUTPUT);
+  //pinMode(pinButton, INPUT);
+  //pinMode(pinLed, OUTPUT);
 }
 
 void loop() {
-  //  if (digitalRead(pinButton)==HIGH) {
-  //    digitalWrite(pinLed, HIGH);
-  //gprs_sendTextMessage(phone, message);
-  Alarm.delay(5000);
-  int ms = ether_icmpPing();
-  Serial.print("ping took (ms): ");
-  Serial.println(ms);
+  measure();
 
-  Alarm.delay(5000);
-  ms = ether_httpPing();
-  Serial.print("http took (ms): ");
-  Serial.println(ms);
+  Serial.print(previousPayloadValue1);
+  Serial.print(" -> ");
+  Serial.print(currentPayloadValue1);
+  Serial.print(" | ");
+  Serial.print(previousPayloadValue2);
+  Serial.print(" -> ");
+  Serial.println(currentPayloadValue2);
 
-  //  Alarm.delay(5000);
-  //  sendMessage();
-  //    digitalWrite(pinLed, LOW);
-  //  }
+  // todo, combine in one if statement as otherwise multiple payloads are sent out
+  if (currentPayloadValue1 >= payloadValue1Threshold && previousPayloadValue1 < payloadValue1Threshold) {
+    // temp was rising above threshold, send out message
+    payload();
+  }  
+  if (currentPayloadValue1 <= payloadValue1Threshold && previousPayloadValue1 > payloadValue1Threshold) {
+    // temp was falling below threshold, send out message
+    payload();
+  }  
+  Alarm.delay(60000); // wait for 60 sec
+
   Ethernet.maintain(); // refresh DHCP IP if necessary
 }
 
 // *******************************************************
 // i.a.m. logic
 
-void sendMessage() {
-  Serial.println("sendMessage");
-  ether_sendMessage();
-  outgoingMessageCount++;
+void oneTimeEepromInit() {
+  // make sure this is really only invoked once!
+  EEPROM.write(incomingMessageCountAdr, 0);
+  EEPROM.write(outgoingMessageCountAdr, 0);
+  EEPROM.write(restartCountAdr, 0);
 }
 
-void sendRestart() {
-  Serial.print("sendRestart: ");
-  Serial.println(restartMessage());
-  outgoingMessageCount++;
+void eepromRead() {
+  incomingMessageCount = EEPROM.read(incomingMessageCountAdr);
+  outgoingMessageCount = EEPROM.read(outgoingMessageCountAdr);
+  restartCount = EEPROM.read(restartCountAdr);
 }
 
-void sendHeartbeat() {
-  Serial.print("sendHeartbeat: ");
-  Serial.println(messageHeartbeat());
-  outgoingMessageCount++;
+void measure() {
+  payloadValue1();
+  payloadValue2();
 }
 
-String messageHeartbeat() {
-  String m = String (messageIdHeartbeat);
-  m += ",";
-  m += String(customerId);
-  m += ",";
-  m += String(deviceId);
-  m += ",";
-  m += String(outgoingMessageCount);
-  m += ",";
-  m += String(restartCount);
-  m += ",";
-  m += currentTime();
+void payload() {
+  char m[50];
+  message(m, messageIdPayload);
+  //  gprs_sendTextMessage(phone, m);
+  ether_sendMessage(m);
+  outgoingMessageCount++;
+  EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
+}
+
+void restart() {
+  char m[50];
+  message(m, messageIdRestart);
+  //  gprs_sendTextMessage(phone, m);
+  ether_sendMessage(m);
+  restartCount++;
+  outgoingMessageCount++;
+  EEPROM.write(restartCountAdr, restartCount);
+  EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
+}
+
+void heartbeat() {
+  char m[50];
+  message(m, messageIdHeartbeat);
+  //  gprs_sendTextMessage(phone, m);
+  ether_sendMessage(m);
+  outgoingMessageCount++;
+  EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
+}
+
+char* message(char* m, char* messageId) {
+  char counter[3];
+  strcpy(m, messageId);
+  strcat(m, ",");
+  strcat(m, customerId);
+  strcat(m, ",");
+  strcat(m, deviceId);
+  strcat(m, ",");
+  itoa(outgoingMessageCount, counter, 10);
+  strcat(m, counter);
+  strcat(m, ",");
+  itoa(restartCount, counter, 10);
+  strcat(m, counter);
+  strcat(m, ",");
+  char time[16];
+  strcat(m, currentTime(time));
+  strcat(m, ",");
+  char value[6];
+  itoa(currentPayloadValue1, value, 10);
+  strcat(m, value);
+  strcat(m, ",");
+  itoa(currentPayloadValue2, value, 10);
+  strcat(m, value);
+  strcat(m, ",");
+  strcat(m, ",");
   return m;
 }
 
-String restartMessage() {
-  String m = String(messageIdRestart);
-  m += ",";
-  m += String(customerId);
-  m += ",";
-  m += String(deviceId);
-  m += ","; 
-  m += String(outgoingMessageCount);
-  m += ",";
-  m += String(restartCount);
-  m += ",";
-  m += currentTime();
-  return m;
+int payloadValue1() {
+  previousPayloadValue1 = currentPayloadValue1;
+  currentPayloadValue1 = ether_icmpPing(icmpServer, icmpSocket);
+  return currentPayloadValue1;
 }
 
-// *******************************************************
-// GSM/GPRS shield specific code
-
-void gprs_sendTextMessage(String number, String message) {
-  gprs.print("AT+CMGF=1\r"); // SMS in text mode
-  delay(100);
-  gprs.println("AT + CMGS = \"" + number + "\"");
-  delay(100);
-  gprs.println(message);
-  delay(100);
-  gprs.println((char)26); // ASCII code of the ctrl+z is 26
-  delay(100);
-  gprs.println();
-}
-
-void gprs_powerUpOrDown() {
-  pinMode(pinGprsPower, OUTPUT); 
-  digitalWrite(pinGprsPower,LOW);
-  delay(1000);
-  digitalWrite(pinGprsPower,HIGH);
-  delay(2000);
-  digitalWrite(pinGprsPower,LOW);
-  delay(3000);
-}
-
-void gprs_setup() {
-  gprs.begin(19200); // the default GPRS baud rate   
+int payloadValue2() {
+  previousPayloadValue2 = currentPayloadValue2;
+  currentPayloadValue2 = ether_httpPing(httpServer, 80, "GET /search?q=arduino HTTP/1.0");
+  return currentPayloadValue2;
 }
 
 // *******************************************************
@@ -200,26 +246,28 @@ void ether_setup() {
   if (Ethernet.begin(mac) == 0) {
     Serial.println("Failed to configure Ethernet using DHCP");
     for(;;)
-      ; // todo, useful defaulting?
+      ; // todo, useful defaulting? retry?
   }
   Serial.println(Ethernet.localIP());
 }
 
-void ether_sendMessage() {
-  Serial.println("ether_sendMessage");
-  long t = millis();
-  //  ether_icmpPing();
-  ether_httpGet();
-  int secs = (int) ((millis() - t) / 1000l);
-  Serial.print("ether_sendMessage: took (s) ");
-  Serial.println(secs);
+void ether_sendMessage(char *message) {
+  Serial.print("ether_sendMessage: ");
+  Serial.print(marsServer);
+  Serial.println(message);
+
+  //char number[message.length];
+ // strcpy(time, formatNumber(number, year()));
+
+  //char data[] ="{\"message\":{\"data\":\"" + "\"}}";
+  
+  ether_httpPost(marsServer, marsPort, marsUrl, message);
 }
 
-int ether_icmpPing() {
-  Serial.println("ether_icmpPing");
-  ICMPPing ping(pingSocket);
+int ether_icmpPing(byte *server, SOCKET socket) {
+  ICMPPing ping(icmpSocket);
   char buffer [256];
-  ping(4, icmpServer, buffer);
+  ping(4, server, buffer);
 
   // parse response, e.g. Reply[1] from: 8.8.4.4: bytes=32 time=12ms TTL=128
   char delims[]=" ";
@@ -243,68 +291,73 @@ int ether_icmpPing() {
   }
 }
 
-long ether_httpPing() {
-  Serial.println("ether_httpPing");
+long ether_httpPing(char *server, int port, char *url) {
+  //Serial.println("ether_httpPing");
   long time = millis();
-  if (ether.connect(httpServer, 80)) {
-    ether.println("GET /search?q=arduino HTTP/1.0");
-    //    ether.println("GET / HTTP/1.0");
-    ether.println();
+  if (httpClient.connect(server, port)) {
+    httpClient.println(url);
+    // ether.println("GET /search?q=arduino HTTP/1.0");
+    httpClient.println();
   } 
   else {
     return -1;
   }
   long timeout = millis() + httpTimeout; // stop after this period
-  while (ether.connected() && (millis() < timeout)) {
-    if (ether.available()) {
-      char c = ether.read();
+  while (httpClient.connected() && (millis() < timeout)) {
+    if (httpClient.available()) {
+      char c = httpClient.read();
       //      Serial.print(c);
     }
   }
-  ether.stop();
+  httpClient.stop();
   return millis() - time;
 }
 
+void ether_httpPost(char *server, int port, char *url, char* d) {
+  String data = "{\"message\":{\"data\":\"";
+  data += d;
+  data += "\"}}";
+//  Serial.println("connecting...");
+  if (marsClient.connect(server,port)) {
+//    Serial.println("connected");
+    marsClient.print("POST ");
+    marsClient.print(url);
+    marsClient.println(" HTTP/1.1");
+    marsClient.print("Host: ");
+    marsClient.println(server);
+    marsClient.println("Content-Type: application/json");
+    marsClient.println("Accept: application/json");
+    marsClient.println("Connection: close");
+    marsClient.print("Content-Length: ");
+    marsClient.println(data.length());
+    marsClient.println();
+    marsClient.print(data);
+    marsClient.println();
+  }
+  delay(5000);
 
-void ether_httpGet() {
-  Serial.println("ether_httpGet");
-  if (ether.connect(httpServer, 80)) {
-    Serial.println("connected");
-    ether.println("GET /search?q=arduino HTTP/1.0");
-    //    ether.println("GET / HTTP/1.0");
-    ether.println();
-  } 
-  else {
-    Serial.println("connection failed");
+  if (marsClient.connected()) {
+ //   Serial.println("disconnecting.");
+    marsClient.stop();
   }
-  long timeout = millis() + httpTimeout; // stop after this period
-  while (ether.connected() && (millis() < timeout)) {
-    if (ether.available()) {
-      char c = ether.read();
-      //      Serial.print(c);
-    }
-  }
-  ether.stop();
-  Serial.println("disconnecting.");
+
 }
 
 // *******************************************************
 // time via NTP 
 unsigned long ether_syncTime() {
-  Serial.println("ether_syncTime");
-
-  Udp.begin(localPort);
-  sendNTPpacket(timeServer); // send an NTP packet to a time server
+  ntpClient.begin(ntpLocalPort);
+  sendNTPpacket(ntpTimeServer); // send an NTP packet to a time server
   delay(5000);
-  if ( Udp.parsePacket() ) {  
+  if ( ntpClient.parsePacket() ) {  
     // We've received a packet, read the data from it
-    Udp.read(packetBuffer,NTP_PACKET_SIZE);  // read the packet into the buffer
+    ntpClient.read(ntpPacketBuffer,NTP_PACKET_SIZE);  // read the packet into the buffer
 
     //the timestamp starts at byte 40 of the received packet and is four bytes,
     // or two words, long. First, esxtract the two words:
 
-    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);  
+    unsigned long highWord = word(ntpPacketBuffer[40], ntpPacketBuffer[41]);
+    unsigned long lowWord = word(ntpPacketBuffer[42], ntpPacketBuffer[43]);  
     // combine the four bytes (two words) into a long integer
     // this is NTP time (seconds since Jan 1 1900):
     unsigned long secsSince1900 = highWord << 16 | lowWord; 
@@ -319,59 +372,67 @@ unsigned long ether_syncTime() {
 // send an NTP request to the time server at the given address 
 unsigned long sendNTPpacket(IPAddress& address)
 {
-  Serial.println("sendNTPpacket");
-  memset(packetBuffer, 0, NTP_PACKET_SIZE); // set all bytes in the buffer to 0
+  memset(ntpPacketBuffer, 0, NTP_PACKET_SIZE); // set all bytes in the buffer to 0
   // Initialize values needed to form NTP request
-  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-  packetBuffer[1] = 0;     // Stratum, or type of clock
-  packetBuffer[2] = 6;     // Polling Interval
-  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  ntpPacketBuffer[0] = 0b11100011;   // LI, Version, Mode
+  ntpPacketBuffer[1] = 0;     // Stratum, or type of clock
+  ntpPacketBuffer[2] = 6;     // Polling Interval
+  ntpPacketBuffer[3] = 0xEC;  // Peer Clock Precision
   // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12]  = 49; 
-  packetBuffer[13]  = 0x4E;
-  packetBuffer[14]  = 49;
-  packetBuffer[15]  = 52;
+  ntpPacketBuffer[12]  = 49; 
+  ntpPacketBuffer[13]  = 0x4E;
+  ntpPacketBuffer[14]  = 49;
+  ntpPacketBuffer[15]  = 52;
 
   // all NTP fields have been given values, now
   // you can send a packet requesting a timestamp: 		   
-  Udp.beginPacket(address, 123); //NTP requests are to port 123
-  Udp.write(packetBuffer,NTP_PACKET_SIZE);
-  Udp.endPacket(); 
+  ntpClient.beginPacket(address, 123); //NTP requests are to port 123
+  ntpClient.write(ntpPacketBuffer,NTP_PACKET_SIZE);
+  ntpClient.endPacket(); 
 }
 
 // *****************************************************************
 // Helpers
 
-String currentTime() {
-  String t = String("");
-  t += formatDigits(year());
-  t += formatDigits(month());
-  t += formatDigits(day());
-  t += "-";
-  t += formatDigits(hour());
-  t += formatDigits(minute());
-  t += formatDigits(second());
-  return t;
+char* currentTime(char* time) {
+  char number[5];
+  strcpy(time, formatNumber(number, year()));
+  strcat(time, formatNumber(number, month()));
+  strcat(time, formatNumber(number, day()));
+  strcat(time, "-");
+  strcat(time, formatNumber(number, hour()));
+  strcat(time, formatNumber(number, minute()));
+  strcat(time, formatNumber(number, second()));
+  return time;
 }
 
-void printTime(){
-  Serial.println("printTime");
-  Serial.println(currentTime());
-  //  Serial.print(year());
-  //  Serial.print(formatDigits(month()));
-  //  Serial.print(formatDigits(day()));
-  //  Serial.print("-");
-  //  Serial.print(formatDigits(hour()));
-  //  Serial.print(formatDigits(minute()));
-  //  Serial.println(formatDigits(second()));
+char* formatNumber(char* number, int digits){
+  char tmp[5];
+  itoa(digits, tmp, 10);
+  if(digits < 10) {
+    strcpy(number, "0");
+    strcat(number, tmp);
+  } 
+  else {
+    strcpy(number, tmp);
+  }
+  return number;
 }
 
-String formatDigits(int digits){
-  if(digits < 10)
-    return String("0" + String(digits));
-  return String(digits);
+char* ftoa(char *a, float f, int precision)
+{
+  // slightly wrong sometimes, e.g. 23.04 results in 23.4
+  long p[] = {
+    0,10,100,1000,10000,100000,1000000,10000000,100000000      };
+  char *ret = a;
+  long heiltal = (long)f;
+  itoa(heiltal, a, 10);
+  while (*a != '\0') a++;
+  *a++ = '.';
+  long desimal = abs((long)((f - heiltal) * p[precision]));
+  itoa(desimal, a, 10);
+  return ret;
 }
-
 
 
 

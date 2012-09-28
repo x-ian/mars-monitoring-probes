@@ -17,9 +17,7 @@ void setup()
   Serial.println("setup");
 
   gprs_setup();
-
   delay(60000);
-
   gprs_sendTextMessage(number, "Test message upon restart in setup");
 }
 
