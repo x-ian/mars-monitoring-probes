@@ -1,3 +1,7 @@
+#include <Time.h>
+
+#include <SimpleTimer.h>
+
 #include <EEPROM.h>
 
 #include <SPI.h>
@@ -11,11 +15,9 @@
 #include <util.h>
 #include <ICMPPing.h>
 
-#include <TimeAlarms.h>
-
-#include <Time.h>
-
 //#include <SoftwareSerial.h>
+
+SimpleTimer heartbeatTimer;
 
 // base configs and vars
 char messageIdHeartbeat[] = "HEARTBEAT";
@@ -28,10 +30,11 @@ char messageIdPayload[] = "PAYLOAD";
 //String phone = "+491784049573";
 
 // mars server
-char marsServer[] = "192.168.1.4";
-int marsPort = 3000;
+//char marsServer[] = "192.168.1.4";
+//int marsPort = 3000;
+char marsServer[] = "www.marsmonitoring.com";
+int marsPort = 80;
 char marsUrl[] = "/messages/create_from_probe";
-
 EthernetClient marsClient;
 
 // ICMP ping communication
@@ -54,7 +57,7 @@ const int timeZoneOffset = +2;
 
 // device configs
 const char* customerId = "1";
-const char* deviceId = "38";
+const char* deviceId = "9";
 
 // device counters
 byte incomingMessageCount = 0;
@@ -89,9 +92,9 @@ const int incomingMessageCountAdr = 2;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Leonardo only
+//  }
   Serial.println("setup");
 
   //oneTimeEepromInit();
@@ -99,8 +102,8 @@ void setup() {
 
   setTime(23,59,59,24,12,2011); // just to begin with something
   ether_setup();
-//  setSyncProvider(ether_syncTime);
-  //  setSyncIntervall(43200); // get new time every 12 hours
+  setSyncProvider(ether_syncTime);
+  setSyncInterval(43200); // get new time every 12 hours = 43200 secs
 
   // disable SD interface for ethernet shield (as in http://arduino.cc/forum/index.php/topic,98607.0.html)
   //  pinMode(4,OUTPUT);
@@ -112,11 +115,10 @@ void setup() {
   currentPayloadValue2 = 0;
 
   // wait 1 minute before sending out restart message
-  delay(60000);
+  delay(10000);
   restart();
 
-  //  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
-  Alarm.timerRepeat(240, heartbeat); // 14400 sec = 4 h
+  heartbeatTimer.setInterval(300000, heartbeat);
 
   // init board layout  
   //pinMode(pinButton, INPUT);
@@ -124,6 +126,7 @@ void setup() {
 }
 
 void loop() {
+  delay(10000);
   measure();
 
   Serial.print(previousPayloadValue1);
@@ -134,17 +137,15 @@ void loop() {
   Serial.print(" -> ");
   Serial.println(currentPayloadValue2);
 
-  // todo, combine in one if statement as otherwise multiple payloads are sent out
-  if (currentPayloadValue1 >= payloadValue1Threshold && previousPayloadValue1 < payloadValue1Threshold) {
-    // temp was rising above threshold, send out message
-    payload();
+  if (((currentPayloadValue1 >= payloadValue1Threshold && previousPayloadValue1 < payloadValue1Threshold) 
+    || (currentPayloadValue1 < payloadValue1Threshold && previousPayloadValue1 >= payloadValue1Threshold))
+    || ((currentPayloadValue2 >= payloadValue2Threshold && previousPayloadValue2 < payloadValue2Threshold) 
+    || (currentPayloadValue2 < payloadValue2Threshold && previousPayloadValue2 >= payloadValue2Threshold)))
+  {
+    //payload();
   }  
-  if (currentPayloadValue1 <= payloadValue1Threshold && previousPayloadValue1 > payloadValue1Threshold) {
-    // temp was falling below threshold, send out message
-    payload();
-  }  
-  Alarm.delay(60000); // wait for 60 sec
 
+  heartbeatTimer.run();
   Ethernet.maintain(); // refresh DHCP IP if necessary
 }
 
@@ -257,10 +258,10 @@ void ether_sendMessage(char *message) {
   Serial.println(message);
 
   //char number[message.length];
- // strcpy(time, formatNumber(number, year()));
+  // strcpy(time, formatNumber(number, year()));
 
   //char data[] ="{\"message\":{\"data\":\"" + "\"}}";
-  
+
   ether_httpPost(marsServer, marsPort, marsUrl, message);
 }
 
@@ -317,9 +318,9 @@ void ether_httpPost(char *server, int port, char *url, char* d) {
   String data = "{\"message\":{\"data\":\"";
   data += d;
   data += "\"}}";
-//  Serial.println("connecting...");
+  //  Serial.println("connecting...");
   if (marsClient.connect(server,port)) {
-//    Serial.println("connected");
+    //    Serial.println("connected");
     marsClient.print("POST ");
     marsClient.print(url);
     marsClient.println(" HTTP/1.1");
@@ -337,7 +338,7 @@ void ether_httpPost(char *server, int port, char *url, char* d) {
   delay(5000);
 
   if (marsClient.connected()) {
- //   Serial.println("disconnecting.");
+    //   Serial.println("disconnecting.");
     marsClient.stop();
   }
 
@@ -346,6 +347,7 @@ void ether_httpPost(char *server, int port, char *url, char* d) {
 // *******************************************************
 // time via NTP 
 unsigned long ether_syncTime() {
+  Serial.println("ether_syncTime");
   ntpClient.begin(ntpLocalPort);
   sendNTPpacket(ntpTimeServer); // send an NTP packet to a time server
   delay(5000);
@@ -423,7 +425,7 @@ char* ftoa(char *a, float f, int precision)
 {
   // slightly wrong sometimes, e.g. 23.04 results in 23.4
   long p[] = {
-    0,10,100,1000,10000,100000,1000000,10000000,100000000      };
+    0,10,100,1000,10000,100000,1000000,10000000,100000000        };
   char *ret = a;
   long heiltal = (long)f;
   itoa(heiltal, a, 10);
@@ -433,6 +435,7 @@ char* ftoa(char *a, float f, int precision)
   itoa(desimal, a, 10);
   return ret;
 }
+
 
 
 
