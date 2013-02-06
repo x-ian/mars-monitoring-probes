@@ -22,7 +22,7 @@ SimpleTimer heartbeatTimer;
 // base configs and vars
 char messageIdHeartbeat[] = "HEARTBEAT";
 char messageIdRestart[] = "RESTART";
-char messageIdPayload[] = "PAYLOAD";
+char messageIdPayload[] = "ALARM";
 
 // mars phones
 //const char phone[] = "+4915259723556";
@@ -57,7 +57,7 @@ const int timeZoneOffset = +2;
 
 // device configs
 const char* customerId = "1";
-const char* deviceId = "9";
+const char* deviceId = "1";
 
 // device counters
 byte incomingMessageCount = 0;
@@ -65,9 +65,9 @@ byte outgoingMessageCount = 0;
 byte restartCount = 0;
 
 // device board layout
-int pinAnalogTemp = 0;
-int pinLed = 3;
-int pinButton = 5;
+//int pinAnalogTemp = 0;
+//int pinLed = 3;
+//int pinButton = 5;
 //int pinGprsRx = 7;
 //int pinGrpsTx = 8;
 //int pinGprsPower = 9;
@@ -78,10 +78,10 @@ byte mac[] = {
 // probe values
 int currentPayloadValue1 = 0;
 int previousPayloadValue1 = 0;
-const int payloadValue1Threshold = 15;
+const int payloadValue1Threshold = 17;
 int currentPayloadValue2 = 0;
 int previousPayloadValue2 = 0;
-const int payloadValue2Threshold = 16500;
+const int payloadValue2Threshold = 18000;
 
 const int restartCountAdr = 0;
 const int outgoingMessageCountAdr = 1;
@@ -91,10 +91,8 @@ const int incomingMessageCountAdr = 2;
 // arduino methods
 
 void setup() {
-  Serial.begin(9600);
-//  while (!Serial) {
-//    ; // wait for serial port to connect. Needed for Leonardo only
-//  }
+  Serial.begin(19200);
+//  while (!Serial) { ; } // wait for serial port to connect. Needed for Leonardo only
   Serial.println("setup");
 
   //oneTimeEepromInit();
@@ -106,8 +104,8 @@ void setup() {
   setSyncInterval(43200); // get new time every 12 hours = 43200 secs
 
   // disable SD interface for ethernet shield (as in http://arduino.cc/forum/index.php/topic,98607.0.html)
-  //  pinMode(4,OUTPUT);
-  //  digitalWrite(4,HIGH);
+  pinMode(4,OUTPUT);
+  digitalWrite(4,HIGH);
 
   previousPayloadValue1 = 0;
   currentPayloadValue1 = 0;
@@ -115,18 +113,15 @@ void setup() {
   currentPayloadValue2 = 0;
 
   // wait 1 minute before sending out restart message
-  delay(10000);
+  delay(60000);
+  measure();
   restart();
 
   heartbeatTimer.setInterval(300000, heartbeat);
-
-  // init board layout  
-  //pinMode(pinButton, INPUT);
-  //pinMode(pinLed, OUTPUT);
 }
 
 void loop() {
-  delay(10000);
+  delay(60000);
   measure();
 
   Serial.print(previousPayloadValue1);
@@ -142,7 +137,7 @@ void loop() {
     || ((currentPayloadValue2 >= payloadValue2Threshold && previousPayloadValue2 < payloadValue2Threshold) 
     || (currentPayloadValue2 < payloadValue2Threshold && previousPayloadValue2 >= payloadValue2Threshold)))
   {
-    //payload();
+    payload();
   }  
 
   heartbeatTimer.run();

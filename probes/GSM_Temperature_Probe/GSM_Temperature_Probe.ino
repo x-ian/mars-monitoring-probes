@@ -58,7 +58,7 @@ const int incomingMessageCountAdr = 2;
 // arduino methods
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(19200);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
@@ -74,10 +74,10 @@ void setup() {
   currentPayloadValue1 = 0;
 
   // wait 1 minute before sending out restart message
-  delay(60000);
+  delay(10000);
   restart();
 
-  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
+  Alarm.timerRepeat(15, heartbeat); // 14400 sec = 4 h
 
   // init board layout  
   //pinMode(pinButton, INPUT);
@@ -85,6 +85,7 @@ void setup() {
 }
 
 void loop() {
+  Serial.print("loop ");
   measure();
 
   Serial.print(previousPayloadValue1);
@@ -99,7 +100,7 @@ void loop() {
     // temp was falling below threshold, send out message
     payload();
   }  
-  Alarm.delay(60000); // wait for 60 sec
+  Alarm.delay(5000); // wait for 60 sec
 }
 
 // *******************************************************
@@ -176,6 +177,7 @@ char* message(char* m, char* messageId) {
 }
 
 char* payloadValue1(char* v) {
+  Serial.print("payloadValue1 ");
   // analog temperature from grove
   char value[] = "     ";
   int B=3975; 

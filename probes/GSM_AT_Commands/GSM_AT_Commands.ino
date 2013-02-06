@@ -18,6 +18,8 @@
 //Computer is connected to Hardware UART
 //GPRS Shield is connected to the Software UART 
 
+// check http://www.developershome.com/sms/atCommandsIntro.asp for a basic intro
+
 #include <SoftwareSerial.h>
 
 SoftwareSerial GPRS(7, 8);

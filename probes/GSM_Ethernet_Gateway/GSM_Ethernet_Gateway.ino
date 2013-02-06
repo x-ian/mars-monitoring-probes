@@ -25,10 +25,12 @@ char incomingNumber[20];
 char incomingMessage[INCOMING_BUFFER_SIZE];
 char incomingTimestamp[20];
 
-byte mac[] = { 
-  0x90, 0xA2, 0xDA, 0x0D, 0x86, 0x4C };
+// ethernet shield
+// byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x86, 0x4C };
+// arduino ethernet
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
 byte ip[] = { 
-  192, 168, 2, 177 };
+  192, 168, 1, 10 };
 EthernetServer server(80);
 EthernetClient client ;
 
@@ -52,7 +54,7 @@ void setup()
   ether_setup();
   delay(1000);
 
-  checkForNewSmsTimer.setInterval(60, checkForNewSms); // check every 60 secs for new incoming SMS
+  checkForNewSmsTimer.setInterval(60000, checkForNewSms); // check every 60 secs for new incoming SMS
 }
 
 void loop() {
@@ -145,13 +147,18 @@ void nextHttpLine(char* line) {
 
 void checkForNewSms() {
   char incomingStoragePosition = gprs_nextAvailableTextIndex();
+  Serial.print("found incoming text message at position ");
+  Serial.println(incomingStoragePosition);
   gprs_readTextMessage(incomingStoragePosition);
   // check incoming message
   if (checkIncomingTextMessage()) {
+    Serial.println("incoming text message ok");
     int i = payloadOfIncomingMessage();
     if (i > -1) {
+      Serial.println("incoming text message contains payload");
       // forward incoming message
       if (ether_sendMessage(&incomingMessage[i])) {
+        Serial.println("incoming text message forwarded via HTTP");
         // gprs delete old message
         gprs_deleteTextMessage(incomingStoragePosition);
       }
@@ -307,7 +314,7 @@ int payloadOfIncomingMessage() {
 
 void ether_setup() {
   Ethernet.begin(mac, ip);
-  server.begin();
+//  server.begin();
 }
 
 boolean ether_sendMessage(char * message) {
