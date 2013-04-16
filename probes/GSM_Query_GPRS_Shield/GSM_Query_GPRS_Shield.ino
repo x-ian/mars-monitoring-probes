@@ -155,6 +155,9 @@ void setup()
   gprs_sendAtCommand("AT+CSMINS?", "SIM inserted status report");
   gprs_sendAtCommand("AT+CREG?", "Network registration");
   gprs_sendAtCommand("AT+CRLP?", "Radio link protocol parameters");
+  gprs_sendAtCommand("AT+CMGL=\"ALL\"", "List all messages");
+  gprs_sendAtCommand("AT+CMGR=0", "Read message #0");
+  gprs_sendAtCommand("AT+CMGR=1", "Read message #1");
 }
 
 void loop()
