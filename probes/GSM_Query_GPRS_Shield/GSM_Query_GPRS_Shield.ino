@@ -158,6 +158,8 @@ void setup()
   gprs_sendAtCommand("AT+CMGL=\"ALL\"", "List all messages");
   gprs_sendAtCommand("AT+CMGR=0", "Read message #0");
   gprs_sendAtCommand("AT+CMGR=1", "Read message #1");
+  gprs_sendAtCommand("AT+CMGR=2", "Read message #2");
+  Serial.println("done");
 }
 
 void loop()
@@ -182,6 +184,12 @@ void gprs_sendAtCommand(String command, String desc) {
   while(GPRS.available()) {
     Serial.print((char) GPRS.read());
   }
+  delay(100);
+  while(GPRS.available()) {
+    Serial.print((char) GPRS.read());
+  }
+  delay(5000);
+  Serial.println("-------------------------");
 }
 
 void gprs_powerUpOrDown() {
