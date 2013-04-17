@@ -159,6 +159,15 @@ void setup()
   gprs_sendAtCommand("AT+CMGR=0", "Read message #0");
   gprs_sendAtCommand("AT+CMGR=1", "Read message #1");
   gprs_sendAtCommand("AT+CMGR=2", "Read message #2");
+  gprs_sendAtCommand("AT+CMGD=1", "Delete message #1");
+  gprs_sendAtCommand("AT+CMGD=2", "Delete message #2");
+  gprs_sendAtCommand("AT+CMGD=3", "Delete message #3");
+  gprs_sendAtCommand("AT+CMGD=4", "Delete message #4");
+  gprs_sendAtCommand("AT+CMGD=5", "Delete message #5");
+  gprs_sendAtCommand("AT+CMGL=\"ALL\"", "List all messages");
+  gprs_sendAtCommand("AT+CMGR=0", "Read message #0");
+  gprs_sendAtCommand("AT+CMGR=1", "Read message #1");
+  gprs_sendAtCommand("AT+CMGR=2", "Read message #2");
   Serial.println("done");
 }
 
