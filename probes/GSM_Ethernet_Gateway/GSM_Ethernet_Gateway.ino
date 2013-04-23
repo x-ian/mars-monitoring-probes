@@ -30,7 +30,7 @@ char incomingTimestamp[20];
 // arduino ethernet
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
 byte ip[] = { 
-  192, 168, 1, 10 };
+  172, 16, 1, 89 };
 EthernetServer server(80);
 EthernetClient client ;
 
