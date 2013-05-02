@@ -331,7 +331,9 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
   String data = "{\"message\":{\"data\":\"";
   data += d;
   data += "\"}}";
+  Serial.println("ether_httpPost: " + data);
   if (marsClient.connect(server,port)) {
+    Serial.println("ether_httpPost: connect");
     marsClient.print("POST ");
     marsClient.print(url);
     marsClient.println(" HTTP/1.1");
@@ -351,6 +353,7 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
 
   if (marsClient.connected()) {
     // check for "HTTP/1.1 201 Created"
+    Serial.println("ether_httpPost: connected");
     char response[20];
     for (int i = 0; marsClient.connected() && marsClient.available() && i < 20; i++) {
       response[i] = (char) marsClient.read();
