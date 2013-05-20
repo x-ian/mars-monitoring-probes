@@ -84,10 +84,10 @@ void setup()
   ether_setup();
   delay(1000);
 
-  checkForNewSmsTimer.setInterval(60000, checkForNewSms); // check every 60 secs for new incoming SMS
+  checkForNewSmsTimer.setInterval(6000, checkForNewSms); // check every 60 secs for new incoming SMS
 //  heartbeatTimer.setInterval(90000, heartbeat); 
   delay(5000);
-  restart();
+//  restart();
 }
 
 void loop() {
@@ -193,7 +193,7 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
   String data = "{\"message\":{\"data\":\"";
   data += d;
   data += "\"}}";
-  Serial.println("ether_httpPost: " + data);
+  //Serial.println("ether_httpPost: " + data);
   if (marsClient.connect(server,port)) {
     Serial.print("ether_httpPost: trying to connect ... ");
     marsClient.print("POST ");
