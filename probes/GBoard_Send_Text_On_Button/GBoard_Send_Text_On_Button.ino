@@ -27,7 +27,8 @@ char messageIdHeartbeat[] = "HEARTBEAT";
 char messageIdRestart[] = "RESTART";
 char messageIdPayload[] = "ALARM";
 
-char phone[] = "+491784049573";
+//char phone[] = "+491784049573";
+char phone[] = "+265888288976";
 
 // device configs
 const char* customerId = "0";

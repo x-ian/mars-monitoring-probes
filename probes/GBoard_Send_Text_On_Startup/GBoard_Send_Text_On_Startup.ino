@@ -2,10 +2,8 @@
 gboard programming (http://imall.iteadstudio.com/im120411004.html)
 
 FTDI connection through seeeduino stalker board
-3.3 V !
 GND
 DTR
-VCC -> VDD33
 TX - > Rx
 RX -> Tx
 
