@@ -1,10 +1,11 @@
+#include <EEPROM.h>
 #include <Dhcp.h>
 #include <Dns.h>
 #include <Ethernet.h>
 #include <EthernetClient.h>
 #include <SPI.h>
 #include <util.h>
-#include <SimpleTimer.h>
+//#include <SimpleTimer.h>
 #include <SoftwareSerial.h>
 #include <Time.h>
 
@@ -15,21 +16,13 @@ char messageIdPayload[] = "ALARM";
 
 // device configs
 const char* customerId = "1";
-// 12 for Germany, 13 for Malawi
-const char* deviceId = "13";
+//12 for Germany, 13 for Malawi
+const char* deviceId = "12";
 
 // device counters
 byte incomingMessageCount = 0;
 byte outgoingMessageCount = 0;
 byte restartCount = 0;
-
-// probe values
-int currentPayloadValue1 = 0;
-int previousPayloadValue1 = 0;
-const int payloadValue1Threshold = 17;
-int currentPayloadValue2 = 0;
-int previousPayloadValue2 = 0;
-const int payloadValue2Threshold = 18000;
 
 const int restartCountAdr = 0;
 const int outgoingMessageCountAdr = 1;
@@ -40,8 +33,8 @@ int pinGrpsTx = 8;
 int pinGprsPower = 9;
 SoftwareSerial gprs(7, 8);
 
-SimpleTimer checkForNewSmsTimer;
-SimpleTimer heartbeatTimer;
+//SimpleTimer checkForNewSmsTimer;
+//SimpleTimer heartbeatTimer;
 
 // needs to match value of _SS_MAX_RX_BUFF in SoftwareSerial.h 
 // default 64 is not enough, so increase it!
@@ -58,8 +51,8 @@ char incomingTimestamp[20];
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0xBB, 0xE1 }; 
 byte ip[] = { 
 // 172.16.1.88 for neno, 192.168.1.10 for mainz
-  172, 16, 1, 88 };
-//  192, 168, 1, 113 };
+//  172, 16, 1, 88 };
+  192, 168, 1, 113 };
 
 // mars server
 //char marsServer[] = "192.168.1.5";
@@ -75,38 +68,100 @@ void setup()
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
-  Serial.println("setup");
-
-  //oneTimeEepromInit();
-//  eepromRead();
+  Serial.println(F("setup"));
+//oneTimeEepromInit();
+  eepromRead();
 
   gprs_setup();
   ether_setup();
   delay(1000);
 
-  checkForNewSmsTimer.setInterval(6000, checkForNewSms); // check every 60 secs for new incoming SMS
-//  heartbeatTimer.setInterval(90000, heartbeat); 
+//  checkForNewSmsTimer.setInterval(30000, checkForNewSms); // check every 60 secs for new incoming SMS
+//  heartbeatTimer.setInterval(43200000, heartbeat);  // 12 hours, 1 hour 3600000
+//  heartbeatTimer.setInterval(60000, heartbeat); 
   delay(5000);
-//  restart();
+  restart();
 }
 
+
+  // simple solution to replace simpletimer
+  int clock = 0;
+  int timeQuantum = 30000; // 30 sec
+  int heartbeatIntervall = 1440;
+  
 void loop() {
+  checkForNewSms();
+  delay(timeQuantum);
+  clock++;
+  if (clock == heartbeatIntervall) {
+    heartbeat();
+    clock = 0;
+  }
+  delay(timeQuantum);
+
+/*
+  delay(1000);
   checkForNewSmsTimer.run();
-//  heartbeatTimer.run();
+  delay(1000);
+  heartbeatTimer.run();
+  delay(1000);
+*/
+}
+
+void oneTimeEepromInit() {
+  // make sure this is really only invoked once!
+  EEPROM.write(incomingMessageCountAdr, 0);
+  EEPROM.write(outgoingMessageCountAdr, 0);
+  EEPROM.write(restartCountAdr, 0);
+}
+
+void eepromRead() {
+  incomingMessageCount = EEPROM.read(incomingMessageCountAdr);
+  outgoingMessageCount = EEPROM.read(outgoingMessageCountAdr);
+  restartCount = EEPROM.read(restartCountAdr);
 }
 
 void gprs_setup() {
-  Serial.println("gprs_setup");
-  gprs_powerUpOrDown();
-  delay(500);
+  Serial.println(F("gprs_setup"));
   gprs.begin(19200); // the default GPRS baud rate   
   delay(500);
+  if (gprs_alreadyOn()) {
+    // switch off and on again
+    gprs_powerUpOrDown();
+    delay(1000);
+    gprs_powerUpOrDown();
+  } else {
+    gprs_powerUpOrDown();
+  }
+  delay(5000);
   //gprs_setTime();
   delay(500);
+  gprs.println("ATZ"); // go to defaults
+  delay(500);
   gprs.println("ATE0"); // turn off echo mode
-  delay(100);
+  delay(500);
   gprs.println("AT+CMGF=1"); // SMS in text mode
-  delay(100);
+  delay(500);
+}
+
+boolean gprs_alreadyOn() {
+  boolean on = false;
+  gprs.println("ATE0");
+  delay(500);
+  while (gprs.available() > 0) { gprs.read(); }
+  delay(500);
+  gprs.println("ATZ");
+  delay(500);
+  char c = ' ';
+  int i= 0;
+  while (gprs.available() > 0) {
+    c = gprs.read();
+    if (i == 0) on = true;
+    if (i == 2 && c != 'O') on = false;
+    if (i == 3 && c != 'K') on = false;
+    i++;
+  }
+  return on;
 }
 
 void gprs_powerUpOrDown() {
@@ -120,13 +175,13 @@ void gprs_powerUpOrDown() {
 }
 
 void ether_setup() {
-  Serial.print("ether_setup: (might block) ... ");
+  Serial.print(F("ether_setup: (might block) ... "));
   Ethernet.begin(mac, ip);
-  Serial.println(" completed");
+  Serial.println(F(" completed"));
 }
 
 void heartbeat() {
-  Serial.println("heartbeat");
+  Serial.println(F("heartbeat"));
   char m[50];
   message(m, messageIdHeartbeat);
   ether_sendMessage(m);
@@ -134,10 +189,11 @@ void heartbeat() {
 }
 
 void restart() {
+  restartCount++;
+  EEPROM.write(restartCountAdr, restartCount);
   char m[50];
   message(m, messageIdRestart);
   ether_sendMessage(m);
-  restartCount++;
 }
 
 char* message(char* m, char* messageId) {
@@ -157,30 +213,23 @@ char* message(char* m, char* messageId) {
   char time[16];
   strcat(m, currentTime(time));
   strcat(m, ",");
-  char value[6];
-//  itoa(currentPayloadValue1, value, 10);
-//  strcat(m, value);
-//  strcat(m, "3");
+  itoa(incomingMessageCount, counter, 10);
+  strcat(m, counter);
   strcat(m, ",");
-//  strcat(m, ",");
-//  itoa(currentPayloadValue2, value, 10);
-//  strcat(m, value);
-//  strcat(m, "4");
+  itoa(gprs_nextAvailableTextIndex(), counter, 10);
+  strcat(m, counter);
   strcat(m, ",");
-//  strcat(m, "5");
-  strcat(m, ",");
-//  strcat(m, "6");
   strcat(m, ",");
   return m;
 }
 
 boolean ether_sendMessage(char * message) {
-  Serial.print("ether_sendMessage: ");
+  Serial.print(F("ether_sendMessage: "));
   Serial.println(marsServer);
 
   if(ether_httpPost(marsServer, marsPort, marsUrl, message)) {
     outgoingMessageCount++;
-//    EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
+    EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
     return true;
   } else {
     return false;
@@ -189,13 +238,29 @@ boolean ether_sendMessage(char * message) {
 
 boolean ether_httpPost(char * server, int port, char * url, char * d) {
   boolean r = false;
+  char counter[3];
+  itoa(gprs_nextAvailableTextIndex(), counter, 10);
+  String c = String(counter);
+  char time[16];
+  String t =  String(currentTime(time));
 
   String data = "{\"message\":{\"data\":\"";
+
+/*
+  data += " - ";
+  data += t;
+  data += " - ";
+  data += c;
+  data += " - ";
+  */
+  
   data += d;
   data += "\"}}";
-  //Serial.println("ether_httpPost: " + data);
+  data.replace("\n", " ");
+  data.replace("\r", " ");
+  Serial.println("ether_httpPost: " + data);
   if (marsClient.connect(server,port)) {
-    Serial.print("ether_httpPost: trying to connect ... ");
+    Serial.print(F("ether_httpPost: trying to connect ... "));
     marsClient.print("POST ");
     marsClient.print(url);
     marsClient.println(" HTTP/1.1");
@@ -213,21 +278,23 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
   delay(5000);
 
   if (marsClient.connected()) {
-    // check for "HTTP/1.1 201 Created"
-    Serial.println("... connected");
+    Serial.println(F("... connected"));
     char response[20];
     for (int i = 0; marsClient.connected() && marsClient.available() && i < 20; i++) {
       response[i] = (char) marsClient.read();
     }
     response[19]='\0';
+    Serial.println(response);
+    
     if (strcmp(response, "HTTP/1.1 201 Create") == 0) {
       // ok, assume post was successful
       r = true;
     }
-    marsClient.stop();
   } else {
-    Serial.println("... ERROR CONNECTING");
+    Serial.println(F("... ERROR CONNECTING"));
   }
+    marsClient.flush();
+    marsClient.stop();
   return r;
 }
 
@@ -260,36 +327,39 @@ char* formatNumber(char* number, int digits){
 }
 
 void checkForNewSms() {
-  Serial.println("checkForNewSms");
+  Serial.println(F("checkForNewSms"));
   
   int incomingStoragePosition = gprs_nextAvailableTextIndex();
-  if (incomingStoragePosition > -1) {
+  if (incomingStoragePosition > 0) {
     gprs_readTextMessage(incomingStoragePosition);
+    incomingMessageCount++;
+    EEPROM.write(incomingMessageCountAdr, incomingMessageCount);
+
     // check incoming message
     if (checkIncomingTextMessage()) {
-      Serial.println("valid message layout");
+      Serial.println(F("invalid message layout"));
       int i = payloadOfIncomingMessage();
       if (i > -1) {
-        Serial.println("message with content");
+        Serial.println(F("message with content"));
         // forward incoming message
         if (ether_sendMessage(&incomingMessage[i])) {
-          Serial.println("message forwarded");
+          Serial.println(F("message forwarded"));
           gprs_deleteTextMessage(incomingStoragePosition);
         } else {
-          Serial.println("marsmonitoring.com unavailable, keeping the message");
+          Serial.println(F("marsmonitoring.com unavailable, keeping the message"));
         }
       } else {
-        Serial.println("message without any content");
+        Serial.println(F("message without any content"));
         gprs_deleteTextMessage(incomingStoragePosition);
       }
     } else {
       // something seems wrong with the SMS, delete it for now
       // maybe have another dedicated notification channel for such cases?
-      Serial.println("Unknown response from board");
+      Serial.println(F("Unknown response from board"));
       gprs_deleteTextMessage(incomingStoragePosition);
     }
   }
-  Serial.println("checkForNewSms done");
+  Serial.println(F("checkForNewSms done"));
   Serial.println();
 }
 
@@ -297,7 +367,6 @@ void checkForNewSms() {
 // GSM/GPRS shield specific code
 
 int gprs_nextAvailableTextIndex() {
-//  Serial.println("gprs_nextAvailableTextIndex");
   // make sure nothing unexpected is coming in
   delay(500);
   while (gprs.available() > 0) {
@@ -312,15 +381,15 @@ int gprs_nextAvailableTextIndex() {
   
   while (gprs.available() > 0) {
     c = gprs.read();
-    Serial.print(c);
+ //   Serial.print(c);
     // assume output of CMGL is always '  +CMGL: <one digit number at position 9>'
-    // TODO what if number is bigger than 9?
+    // TODO what if number is bigger than 9? should be ok as we always take the first one
     if (i == 9) index = (int) c;
     i++;
   }
   index = index - 48; //poor man converts ASCII to int like this...
-  Serial.println();
-  Serial.print("gprs_nextAvailableTextIndex: ");
+  if (index == -49) index = 0; // no msg available means 49 means 0
+  Serial.print(F("gprs_nextAvailableTextIndex: "));
   Serial.println(index);
   return index;
 }
@@ -352,7 +421,8 @@ void gprs_readTextMessage(int storagePosition) {
 }
 
 void gprs_deleteTextMessage(int storagePosition) {
-  Serial.println("deleteTextMessage: " + storagePosition);
+  Serial.print(F("deleteTextMessage: "));
+  Serial.println(storagePosition);
 
   delay(500);
   gprs.print("AT+CMGD=");
@@ -405,3 +475,6 @@ int payloadOfIncomingMessage() {
   return -1;
 }
 
+void softReset(){
+  asm volatile ("  jmp 0");
+}
