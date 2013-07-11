@@ -18,6 +18,8 @@
 
 #include <Dhcp.h>
 #include <util.h>
+#include <math.h>
+
 
 DHT dht(A0, DHT11);
 
@@ -65,6 +67,12 @@ const int payloadValue1Threshold = 15;
 int currentPayloadValue2 = 0;
 int previousPayloadValue2 = 0;
 const int payloadValue2Threshold = 16500;
+int currentPayloadValue3 = 0;
+int previousPayloadValue3 = 0;
+const int payloadValue3Threshold = 16500;
+int currentPayloadValue4 = 0;
+int previousPayloadValue4 = 0;
+const int payloadValue4Threshold = 16500;
 
 const int restartCountAdr = 0;
 const int outgoingMessageCountAdr = 1;
@@ -82,7 +90,7 @@ void setup() {
   eepromRead();
 
   setTime(23,59,59,24,12,2011); // just to begin with something
-  wifi_setup();
+//  wifi_setup();
 //  setSyncProvider(ether_syncTime);
 //  setSyncInterval(43200); // get new time every 12 hours = 43200 secs
 
@@ -90,34 +98,51 @@ void setup() {
   pinMode(4,OUTPUT);
   digitalWrite(4,HIGH);
 
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  
   previousPayloadValue1 = 0;
   currentPayloadValue1 = 0;
   previousPayloadValue2 = 0;
   currentPayloadValue2 = 0;
+  previousPayloadValue3 = 0;
+  currentPayloadValue3 = 0;
+  previousPayloadValue4 = 0;
+  currentPayloadValue4 = 0;
 
   // wait 1 minute before sending out restart message
   delay(10000);
   measure();
   restart();
-
-//  heartbeatTimer.setInterval(1800000, heartbeat);
 }
 
   // simple solution to replace simpletimer
   int clock = 0;
-  int timeQuantum = 30000; // 30 sec
+  int timeQuantum = 5000; //30000; // 30 sec
   int heartbeatIntervall = 30;
   
 void loop() {
   Serial.print("loop ");
+
   measure();
+
   Serial.print(previousPayloadValue1);
   Serial.print(" -> ");
   Serial.print(currentPayloadValue1);
   Serial.print(" | ");
   Serial.print(previousPayloadValue2);
   Serial.print(" -> ");
-  Serial.println(currentPayloadValue2);
+  Serial.print(currentPayloadValue2);
+  Serial.print(" | ");
+  Serial.print(previousPayloadValue3);
+  Serial.print(" -> ");
+  Serial.print(currentPayloadValue3);
+  Serial.print(" | "); 
+  Serial.print(previousPayloadValue4);
+  Serial.print(" -> ");
+  Serial.println(currentPayloadValue4);
 
   if (((currentPayloadValue1 >= payloadValue1Threshold && previousPayloadValue1 < payloadValue1Threshold) 
     || (currentPayloadValue1 < payloadValue1Threshold && previousPayloadValue1 >= payloadValue1Threshold))
@@ -131,6 +156,7 @@ void loop() {
  
   clock++;
   if (clock == heartbeatIntervall) {
+    Serial.println("time for another heartbeat");
     heartbeat();
     clock = 0;
   }
@@ -154,23 +180,49 @@ void eepromRead() {
 }
 
 void measure() {
+  // temp and humidity
+  delay(500);
   float h = dht.readHumidity();
   float t = dht.readTemperature();
   previousPayloadValue1 = currentPayloadValue1;
   currentPayloadValue1 = (int) lround(t * 100);
   previousPayloadValue2 = currentPayloadValue2;
   currentPayloadValue2 = (int) lround(h * 100);
+
+  // light
+  delay(500);
+  analogRead(A3);
+  delay(500);
+  int sensorValue = analogRead(A3); 
+  float Rsensor=(float)(1023-sensorValue)*10/sensorValue; // there might be a way to get Lux from Rsensor, but I guess it is too unreliable
+  previousPayloadValue3 = currentPayloadValue3;
+  currentPayloadValue3 = (sensorValue * 10); // bring it into the range of temp and hum
+
+  // wind
+//  delay(500);
+//  previousPayloadValue4 = currentPayloadValue4;
+//  analogRead(A2);
+//  delay(500);
+//  currentPayloadValue4 = analogRead(A2) * 10;
+
+  // sound
+/*  delay(500);
+  previousPayloadValue3 = currentPayloadValue3;
+  analogRead(A2);
+  delay(500);
+  currentPayloadValue3 = analogRead(A2);
+*/    
 }
 
 void payload() {
-  char m[50];
+  char m[60];
   message(m, messageIdPayload);
   //  gprs_sendTextMessage(phone, m);
   ether_sendMessage(m);
 }
 
 void restart() {
-  char m[50];
+  char m[60];
   message(m, messageIdRestart);
   //  gprs_sendTextMessage(phone, m);
   ether_sendMessage(m);
@@ -179,7 +231,7 @@ void restart() {
 }
 
 void heartbeat() {
-  char m[50];
+  char m[60];
   message(m, messageIdHeartbeat);
   //  gprs_sendTextMessage(phone, m);
   ether_sendMessage(m);
@@ -209,7 +261,11 @@ char* message(char* m, char* messageId) {
   itoa(currentPayloadValue2, value, 10);
   strcat(m, value);
   strcat(m, ",");
+  itoa(currentPayloadValue3, value, 10);
+  strcat(m, value);
   strcat(m, ",");
+  itoa(currentPayloadValue4, value, 10);
+  strcat(m, value);
   return m;
 }
 
