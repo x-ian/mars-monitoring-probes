@@ -19,16 +19,14 @@ GSM gsm;
 int button = 14;
 int led = 16;
 
-// max number of messages per hour
-int maxMessagesPerHour = 1;
-
 // base configs and vars
 char messageIdHeartbeat[] = "HEARTBEAT";
 char messageIdRestart[] = "RESTART";
 char messageIdPayload[] = "ALARM";
 
-//char phone[] = "+491784049573";
-char phone[] = "+265888288976";
+//char phone[] = "+491784049573"; // chris germany
+char phone[] = "+265888288976"; // steve
+//char phone[] = "+265884767251"; // chris mw
 
 // device configs
 const char* customerId = "0";
@@ -44,7 +42,7 @@ const int outgoingMessageCountAdr = 1;
 const int incomingMessageCountAdr = 2;
 
 // sms contingent
-const int smsContingentPerDay = 1; // max. number of messages within 24 hours
+const int smsContingentPerDay = 5; // max. number of messages within 24 hours
 int messageCounterPerDay = 0;
 int uptimeInDays = 0;
 
