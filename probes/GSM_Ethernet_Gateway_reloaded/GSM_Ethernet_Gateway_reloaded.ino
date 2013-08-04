@@ -5,7 +5,6 @@
 #include <EthernetClient.h>
 #include <SPI.h>
 #include <util.h>
-//#include <SimpleTimer.h>
 #include <SoftwareSerial.h>
 #include <Time.h>
 
@@ -17,7 +16,7 @@ char messageIdPayload[] = "ALARM";
 // device configs
 const char* customerId = "1";
 //12 for Germany, 13 for Malawi
-const char* deviceId = "12";
+const char* deviceId = "13";
 
 // device counters
 byte incomingMessageCount = 0;
@@ -33,9 +32,6 @@ int pinGrpsTx = 8;
 int pinGprsPower = 9;
 SoftwareSerial gprs(7, 8);
 
-//SimpleTimer checkForNewSmsTimer;
-//SimpleTimer heartbeatTimer;
-
 // needs to match value of _SS_MAX_RX_BUFF in SoftwareSerial.h 
 // default 64 is not enough, so increase it!
 // (found in somewhere like /Applications/Arduino.app/Contents/Resources/Java/libraries/SoftwareSerial)
@@ -46,16 +42,19 @@ char incomingMessage[INCOMING_BUFFER_SIZE];
 char incomingTimestamp[20];
 
 // arduino ethernet
-//byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
 // germany
-byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0xBB, 0xE1 }; 
-byte ip[] = { 
+//byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0xBB, 0xE1 }; 
+//byte ip[] = { 
 // 172.16.1.88 for neno, 192.168.1.10 for mainz
 //  172, 16, 1, 88 };
-  192, 168, 1, 113 };
+//  195, 200, 93, 246 };
+//  192, 168, 1, 113 };
+IPAddress ip(172,16,1,88);
+IPAddress myDns(8,8,4,4); // public google DNS
 
 // mars server
-//char marsServer[] = "192.168.1.5";
+//char marsServer[] = "192.168.21.199";
 //int marsPort = 3000;
 char marsServer[] = "www.marsmonitoring.com";
 int marsPort = 80;
@@ -64,10 +63,12 @@ EthernetClient marsClient;
 
 void setup()
 {
+  if (false) Serial.println("ja");
+  
   Serial.begin(19200); // the Serial port of Arduino baud rate.
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Leonardo only
+//  }
   Serial.println(F("setup"));
 //oneTimeEepromInit();
   eepromRead();
@@ -76,13 +77,8 @@ void setup()
   ether_setup();
   delay(1000);
 
-//  checkForNewSmsTimer.setInterval(30000, checkForNewSms); // check every 60 secs for new incoming SMS
-//  heartbeatTimer.setInterval(43200000, heartbeat);  // 12 hours, 1 hour 3600000
-//  heartbeatTimer.setInterval(60000, heartbeat); 
-  delay(5000);
   restart();
 }
-
 
   // simple solution to replace simpletimer
   int clock = 0;
@@ -90,6 +86,10 @@ void setup()
   int heartbeatIntervall = 1440;
   
 void loop() {
+//  delay(5000);
+//  ether_setup();
+//  delay(5000);
+
   checkForNewSms();
   delay(timeQuantum);
   clock++;
@@ -98,7 +98,6 @@ void loop() {
     clock = 0;
   }
   delay(timeQuantum);
-
 /*
   delay(1000);
   checkForNewSmsTimer.run();
@@ -176,7 +175,7 @@ void gprs_powerUpOrDown() {
 
 void ether_setup() {
   Serial.print(F("ether_setup: (might block) ... "));
-  Ethernet.begin(mac, ip);
+  Ethernet.begin(mac, ip, dns);
   Serial.println(F(" completed"));
 }
 
@@ -237,6 +236,13 @@ boolean ether_sendMessage(char * message) {
 }
 
 boolean ether_httpPost(char * server, int port, char * url, char * d) {
+  
+  // clear unprocessed incoming stuff
+  if (marsClient.available()) {
+    char c = client.read();
+    Serial.print(c);
+  }
+  
   boolean r = false;
   char counter[3];
   itoa(gprs_nextAvailableTextIndex(), counter, 10);
@@ -259,36 +265,79 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
   data.replace("\n", " ");
   data.replace("\r", " ");
   Serial.println("ether_httpPost: " + data);
-  if (marsClient.connect(server,port)) {
-    Serial.print(F("ether_httpPost: trying to connect ... "));
+  Serial.print(F("ether_httpPost: connecting ... "));
+  marsClient.connect(server,port);
+    if (!marsClient.connected()) {
+      Serial.print(F("connecting ... "));
+      marsClient.connect(server,port); 
+        if (!marsClient.connected()) {
+          Serial.print(F("connecting ... "));
+          marsClient.connect(server,port); 
+        }
+     
+    }
+  if (marsClient.connected()) {
+    Serial.println(F("posting HTTP"));
     marsClient.print("POST ");
+  delay(10);
     marsClient.print(url);
+  delay(10);
     marsClient.println(" HTTP/1.1");
+  delay(10);
     marsClient.print("Host: ");
+  delay(10);
     marsClient.println(server);
+  delay(10);
     marsClient.println("Content-Type: application/json");
+  delay(10);
     marsClient.println("Accept: application/json");
+  delay(10);
     marsClient.println("Connection: close");
+  delay(10);
     marsClient.print("Content-Length: ");
+  delay(10);
     marsClient.println(data.length());
+  delay(10);
     marsClient.println();
+  delay(10);
     marsClient.print(data);
+  delay(10);
     marsClient.println();
+    Serial.println(marsClient.connected());
   }
-  delay(5000);
+  delay(1000);
 
   if (marsClient.connected()) {
     Serial.println(F("... connected"));
     char response[20];
-    for (int i = 0; marsClient.connected() && marsClient.available() && i < 20; i++) {
+    Serial.println(marsClient.connected());
+    Serial.println(marsClient.available());
+      delay(500);
+    Serial.println(marsClient.available());
+      delay(500);
+    Serial.println(marsClient.available());
+      delay(500);
+    Serial.println(marsClient.available());
+      delay(500);
+    Serial.println(marsClient.available());
+      delay(500);
+    for (int i = 0; marsClient.connected() && marsClient.available() > 0 && i < 20; i++) {
       response[i] = (char) marsClient.read();
     }
     response[19]='\0';
+    while (marsClient.available() > 0) { 
+      // make sure we read the whole remaining incoming thing
+      marsClient.read();
+    }
+    Serial.print(F("Server response: "));
     Serial.println(response);
     
     if (strcmp(response, "HTTP/1.1 201 Create") == 0) {
       // ok, assume post was successful
       r = true;
+      Serial.println(F("Posting to server successful"));
+    } else {
+      Serial.println(F("Posting to server NOT successful"));
     }
   } else {
     Serial.println(F("... ERROR CONNECTING"));
@@ -333,18 +382,17 @@ void checkForNewSms() {
   if (incomingStoragePosition > 0) {
     gprs_readTextMessage(incomingStoragePosition);
     incomingMessageCount++;
-    EEPROM.write(incomingMessageCountAdr, incomingMessageCount);
 
     // check incoming message
     if (checkIncomingTextMessage()) {
-      Serial.println(F("invalid message layout"));
       int i = payloadOfIncomingMessage();
       if (i > -1) {
-        Serial.println(F("message with content"));
+        Serial.print(F("message with content ..."));
         // forward incoming message
         if (ether_sendMessage(&incomingMessage[i])) {
           Serial.println(F("message forwarded"));
           gprs_deleteTextMessage(incomingStoragePosition);
+          EEPROM.write(incomingMessageCountAdr, incomingMessageCount);
         } else {
           Serial.println(F("marsmonitoring.com unavailable, keeping the message"));
         }
@@ -355,7 +403,7 @@ void checkForNewSms() {
     } else {
       // something seems wrong with the SMS, delete it for now
       // maybe have another dedicated notification channel for such cases?
-      Serial.println(F("Unknown response from board"));
+      Serial.println(F("Unknown response from board or provider"));
       gprs_deleteTextMessage(incomingStoragePosition);
     }
   }
@@ -435,7 +483,9 @@ boolean checkIncomingTextMessage() {
   // RESTART,0,0,81,33,20111225-000106,0.0,,,
 
   // start with +CMGR: , assume output if always '\r\n+CMGR: '
-  if (incomingMessage[2] != '+' && incomingMessage[3] != 'C' && incomingMessage[4] != 'M' && incomingMessage[5] != 'G' && incomingMessage[6] != 'R' && incomingMessage[7] != ':' && incomingMessage[8] != ' ') return false;
+  if (incomingMessage[2] != '+' && incomingMessage[3] != 'C' && incomingMessage[4] != 'M' && incomingMessage[5] != 'G' && incomingMessage[6] != 'R' && incomingMessage[7] != ':' && incomingMessage[8] != ' ') {
+    return false;
+  }
 
   // 8 "'s before newline
   int charCounter=0;
@@ -451,7 +501,9 @@ boolean checkIncomingTextMessage() {
     if (incomingMessage[i] == '\r' || incomingMessage[i] == '\n') break;
     if (incomingMessage[i] == ',') charCounter++;
   }
-  if (charCounter != 4) return false;
+  if (charCounter != 4) {
+    return false;
+  }
 
   // at least 2 newlines (one right at beginning and one between header and content of sms
   charCounter = 0;
