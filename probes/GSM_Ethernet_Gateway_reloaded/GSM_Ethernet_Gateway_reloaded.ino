@@ -50,8 +50,10 @@ byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
 //  172, 16, 1, 88 };
 //  195, 200, 93, 246 };
 //  192, 168, 1, 113 };
-IPAddress ip(172,16,1,88);
+IPAddress ip(195,200,93,246); // free public IP of neno
+IPAddress gateway(195,200,93,241); // neno sat modem
 IPAddress myDns(8,8,4,4); // public google DNS
+byte subnet[] = { 255, 255, 255, 240 };
 
 // mars server
 //char marsServer[] = "192.168.21.199";
@@ -63,8 +65,6 @@ EthernetClient marsClient;
 
 void setup()
 {
-  if (false) Serial.println("ja");
-  
   Serial.begin(19200); // the Serial port of Arduino baud rate.
 //  while (!Serial) {
 //    ; // wait for serial port to connect. Needed for Leonardo only
@@ -175,7 +175,7 @@ void gprs_powerUpOrDown() {
 
 void ether_setup() {
   Serial.print(F("ether_setup: (might block) ... "));
-  Ethernet.begin(mac, ip, dns);
+  Ethernet.begin(mac, ip, myDns, gateway, subnet);
   Serial.println(F(" completed"));
 }
 
@@ -239,8 +239,7 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
   
   // clear unprocessed incoming stuff
   if (marsClient.available()) {
-    char c = client.read();
-    Serial.print(c);
+    marsClient.read();
   }
   
   boolean r = false;
