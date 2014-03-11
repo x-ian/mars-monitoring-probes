@@ -86,6 +86,7 @@ void setup()
   int heartbeatIntervall = 1440;
   
 void loop() {
+  Serial.println("loop");
 //  delay(5000);
 //  ether_setup();
 //  delay(5000);
@@ -238,7 +239,7 @@ boolean ether_sendMessage(char * message) {
 boolean ether_httpPost(char * server, int port, char * url, char * d) {
   
   // clear unprocessed incoming stuff
-  if (marsClient.available()) {
+  while (marsClient.available()) {
     marsClient.read();
   }
   
@@ -302,24 +303,15 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
     marsClient.print(data);
   delay(10);
     marsClient.println();
-    Serial.println(marsClient.connected());
+ //   Serial.println(marsClient.connected());
   }
-  delay(1000);
+ // delay(1500);
 
   if (marsClient.connected()) {
-    Serial.println(F("... connected"));
+    Serial.print(F("... connected and waiting for data: "));
     char response[20];
-    Serial.println(marsClient.connected());
-    Serial.println(marsClient.available());
-      delay(500);
-    Serial.println(marsClient.available());
-      delay(500);
-    Serial.println(marsClient.available());
-      delay(500);
-    Serial.println(marsClient.available());
-      delay(500);
-    Serial.println(marsClient.available());
-      delay(500);
+    while (marsClient.connected() && marsClient.available() < 1) ;
+    Serial.println("data there or no longer connected");
     for (int i = 0; marsClient.connected() && marsClient.available() > 0 && i < 20; i++) {
       response[i] = (char) marsClient.read();
     }
@@ -374,6 +366,11 @@ char* formatNumber(char* number, int digits){
   return number;
 }
 
+void softwareReset() // Restarts program from beginning but does not reset the peripherals and registers
+{
+asm volatile ("  jmp 0");  
+}  
+
 void checkForNewSms() {
   Serial.println(F("checkForNewSms"));
   
@@ -406,6 +403,11 @@ void checkForNewSms() {
       gprs_deleteTextMessage(incomingStoragePosition);
     }
   }
+  if (incomingStoragePosition == 2) {
+    //Serial.println("resetting Arduino...");
+    //delay(10000);
+  //  softwareReset();
+  }
   Serial.println(F("checkForNewSms done"));
   Serial.println();
 }
@@ -425,17 +427,33 @@ int gprs_nextAvailableTextIndex() {
   int index = -1;
   int i = 0;
   char c = ' ';
+  char str[4];
+  str[0] = 0;
+  str[1] = 0;
+  str[2] = 0;
+  str[3] = 0;
   
   while (gprs.available() > 0) {
     c = gprs.read();
- //   Serial.print(c);
+    Serial.print(c);
     // assume output of CMGL is always '  +CMGL: <one digit number at position 9>'
     // TODO what if number is bigger than 9? should be ok as we always take the first one
-    if (i == 9) index = (int) c;
+    if (i == 9) { 
+      index = (int) c;
+      str[0] = c;
+    }
+    if (i == 10 && c != ',') {
+      str[1] = c;
+    }
+    if (i == 11 && c != ',') {
+      str[2] = c;
+    }
     i++;
   }
-  index = index - 48; //poor man converts ASCII to int like this...
-  if (index == -49) index = 0; // no msg available means 49 means 0
+  index = atoi(str);
+  
+//  index = index - 48; //poor man converts ASCII to int like this...
+//  if (index == -49) index = 0; // no msg available means 49 means 0
   Serial.print(F("gprs_nextAvailableTextIndex: "));
   Serial.println(index);
   return index;
