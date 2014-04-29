@@ -39,7 +39,7 @@ void loop()
 {
   delay(60000);
 //  gboard_sendTextMessage("+491784049573", "Test message in loop");
-  gboard_sendTextMessage("+265884767251", "Test message in loop");
+//  gboard_sendTextMessage("+265884767251", "Test message in loop");
 }
 
 void gboard_sendTextMessage(char* number, char* message) {

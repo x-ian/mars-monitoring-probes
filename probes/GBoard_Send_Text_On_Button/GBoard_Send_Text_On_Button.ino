@@ -25,8 +25,8 @@ char messageIdRestart[] = "RESTART";
 char messageIdPayload[] = "ALARM";
 
 //char phone[] = "+491784049573"; // chris germany
-char phone[] = "+265888288976"; // steve
-//char phone[] = "+265884767251"; // chris mw
+//char phone[] = "+265888288976"; // steve
+char phone[] = "+265884767251"; // chris mw
 
 // device configs
 const char* customerId = "0";
@@ -51,7 +51,8 @@ int uptimeInDays = 0;
 
 void setup() {      
   Serial.begin(9600);
-  Serial.println("setup");
+  delay(5000);
+  Serial.println(F("setup"));
   if (!initGsm()) {
     // error during GSM setup, stop working and only blink
     while (true) {
@@ -68,7 +69,7 @@ void setup() {
 
   restart();
 
-  Serial.println("setup done"); 
+  Serial.println(F("setup done")); 
 }
 
 void loop() {
@@ -80,11 +81,15 @@ void loop() {
         // button pressed for more than 1 second
         digitalWrite(led, HIGH);
         delay(5000);
+        delay(5000);
         // sending SMS
+        Serial.println(F("before send"));
+        delay(5000);
         if (sendNotification()) {
           // ok, wait 5 seconds on switch off LED
           delay(5000);
           digitalWrite(led, LOW);
+        Serial.println(F("after send"));
         } 
         else {
           // error sending text message
@@ -96,6 +101,8 @@ void loop() {
           delay(2000);
           digitalWrite(led, HIGH);
         }
+                Serial.println(F("after send 2"));
+
       }
     }
   }
@@ -136,9 +143,12 @@ boolean smsContingentDepleted() {
 }
 
 boolean sendNotification() {
+  delay(5000);
+  delay(5000);
+  Serial.println(F("sendNotificaation"));
   if (smsContingentDepleted()) {
     // already send too many messages. don't do it again yet
-    Serial.println("sms Contingent depleted");
+    Serial.println(F("sms Contingent depleted"));
     return false;
   } else {
     // still sms available
@@ -239,17 +249,18 @@ void dash() {
 }
 
 boolean gboard_sendTextMessage(char* number, char* message) {
-  Serial.print("Send SMS to ");
+  Serial.print(F("Send SMS to "));
   Serial.println(number);
   Serial.println(message);
-  int error = gsm.SendSMS(number, message);  
-  if (error == 0) {
-    Serial.println("SMS ERROR");
-    return false;
+  char error = gsm.SendSMS(number, message);  
+  if (error == 1) {
+    Serial.println(F("SMS OK"));
+    return true;
   } 
   else {
-    Serial.println("SMS OK");
-    return true;
+    Serial.print(error);
+    Serial.println(F(" SMS ERROR"));
+    return false;
   }
 }  
 

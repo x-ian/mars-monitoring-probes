@@ -130,12 +130,12 @@ void setup() {
   // wait 1 minute before sending out restart message
   delay(10000);
   measure();
-  restart();
+//  restart();
 }
 
   // simple solution to replace simpletimer
   int clock = 0;
-  int timeQuantum = 30000; // 30 sec
+  int timeQuantum = 50; // 30000 30 sec
   int heartbeatIntervall = 30;
   
 void loop() {

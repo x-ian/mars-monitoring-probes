@@ -1,8 +1,8 @@
 #include <SoftwareSerial.h>
 SoftwareSerial gprs(7, 8);
 
-String number = "+491784049573";
-//String number = "+265884781634";
+//String number = "+491784049573";
+String number = "+265888288976";
 
 int pinGprsRx = 7;
 int pinGrpsTx = 8;
@@ -11,9 +11,9 @@ int pinGprsPower = 9;
 void setup()
 {
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Leonardo only
+//  }
   Serial.println("setup");
 
   gprs_setup();
