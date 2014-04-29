@@ -16,7 +16,7 @@ char messageIdPayload[] = "ALARM";
 // device configs
 const char* customerId = "1";
 //12 for Germany, 13 for Malawi
-const char* deviceId = "13";
+const char* deviceId = "12";
 
 // device counters
 byte incomingMessageCount = 0;
@@ -42,18 +42,18 @@ char incomingMessage[INCOMING_BUFFER_SIZE];
 char incomingTimestamp[20];
 
 // arduino ethernet
-byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
+//byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x6F, 0x35 };
 // germany
-//byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0xBB, 0xE1 }; 
+byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0xBB, 0xE1 }; 
 //byte ip[] = { 
 // 172.16.1.88 for neno, 192.168.1.10 for mainz
 //  172, 16, 1, 88 };
 //  195, 200, 93, 246 };
 //  192, 168, 1, 113 };
-IPAddress ip(195,200,93,246); // free public IP of neno
-IPAddress gateway(195,200,93,241); // neno sat modem
+IPAddress ip(192,168,1,113); // free public IP of neno
+IPAddress gateway(192,168,1,1); // neno sat modem
 IPAddress myDns(8,8,4,4); // public google DNS
-byte subnet[] = { 255, 255, 255, 240 };
+byte subnet[] = { 255, 255, 255, 0 };
 
 // mars server
 //char marsServer[] = "192.168.21.199";
@@ -83,7 +83,8 @@ void setup()
   // simple solution to replace simpletimer
   int clock = 0;
   int timeQuantum = 30000; // 30 sec
-  int heartbeatIntervall = 1440;
+  int heartbeatIntervall = 1440; // 12 hrs with 30 secs
+  //int heartbeatIntervall = 120; // 1 hrs with 30 secs
   
 void loop() {
   Serial.println("loop");
@@ -311,7 +312,7 @@ boolean ether_httpPost(char * server, int port, char * url, char * d) {
     Serial.print(F("... connected and waiting for data: "));
     char response[20];
     while (marsClient.connected() && marsClient.available() < 1) ;
-    Serial.println("data there or no longer connected");
+    Serial.println(F("data there or no longer connected"));
     for (int i = 0; marsClient.connected() && marsClient.available() > 0 && i < 20; i++) {
       response[i] = (char) marsClient.read();
     }
@@ -400,7 +401,7 @@ void checkForNewSms() {
       // something seems wrong with the SMS, delete it for now
       // maybe have another dedicated notification channel for such cases?
       Serial.println(F("Unknown response from board or provider"));
-      gprs_deleteTextMessage(incomingStoragePosition);
+//      gprs_deleteTextMessage(incomingStoragePosition);
     }
   }
   if (incomingStoragePosition == 2) {
@@ -437,7 +438,7 @@ int gprs_nextAvailableTextIndex() {
     c = gprs.read();
     Serial.print(c);
     // assume output of CMGL is always '  +CMGL: <one digit number at position 9>'
-    // TODO what if number is bigger than 9? should be ok as we always take the first one
+    // poor man's convertion of up to 3 chars into int 
     if (i == 9) { 
       index = (int) c;
       str[0] = c;
@@ -465,20 +466,43 @@ void gprs_readTextMessage(int storagePosition) {
   while (gprs.available() > 0) {
     gprs.read();
   }
+  delay(500);
+  
+  for (int i = 0; i < INCOMING_BUFFER_SIZE; i++) {
+    incomingMessage[i] = '\0';
+  }
 
   gprs.print("AT+CMGR=");
   gprs.println(storagePosition);
   delay(500);
+  if (gprs.available() < 10) {
+    // read again as it sometimes doesnt seem to respond properly
+    while (gprs.available() > 0) {
+      gprs.read();
+    }
+    delay(500);
+    gprs.print("AT+CMGR=");
+    gprs.println(storagePosition);
+    delay(500);
+  }
+    
   int count = 0;
   int newlineCount = 0;
   char c = ' ';
+  Serial.println(F("gprs_readTextMessage"));
+  Serial.println(gprs.available());
+  delay(500);
   while (gprs.available() > 0 && newlineCount < 3 && count < INCOMING_BUFFER_SIZE) {
     c = gprs.read();
+    //Serial.println(c);
     if (c == '\r') newlineCount++;
     incomingMessage[count++] = c;
   }
-  incomingMessage[count-1]='\0';
-
+  if (count > 0) {
+    incomingMessage[count-1]='\0';
+  }
+  Serial.println(incomingMessage);
+  Serial.println(F("done"));
   // make sure nothing unprocessed is still waiting
   while (gprs.available()) {
     gprs.read();
@@ -501,6 +525,7 @@ boolean checkIncomingTextMessage() {
 
   // start with +CMGR: , assume output if always '\r\n+CMGR: '
   if (incomingMessage[2] != '+' && incomingMessage[3] != 'C' && incomingMessage[4] != 'M' && incomingMessage[5] != 'G' && incomingMessage[6] != 'R' && incomingMessage[7] != ':' && incomingMessage[8] != ' ') {
+    Serial.println(F("checkIncomingTextMessage: check 1 failed"));
     return false;
   }
 
@@ -510,8 +535,11 @@ boolean checkIncomingTextMessage() {
     if (incomingMessage[i] == '\r' || incomingMessage[i+1] == '\n') break;
     if (incomingMessage[i] == '"') charCounter++;
   }
-  if (charCounter != 8) return false;
-
+  if (charCounter != 8) {
+    Serial.println(F("checkIncomingTextMessage: check 2 failed"));
+    return false;
+  }
+  
   // 4 ,'s before newline
   charCounter = 0;
   for (int i = 2; i < strlen(incomingMessage) - 1; i++) {
@@ -519,6 +547,7 @@ boolean checkIncomingTextMessage() {
     if (incomingMessage[i] == ',') charCounter++;
   }
   if (charCounter != 4) {
+    Serial.println(F("checkIncomingTextMessage: check 3 failed"));
     return false;
   }
 
@@ -527,8 +556,11 @@ boolean checkIncomingTextMessage() {
   for (int i = 0; i < strlen(incomingMessage) - 1; i++) {
     if (incomingMessage[i] == '\r' && incomingMessage[i+1] == '\n') charCounter++;
   }
-  if (charCounter < 2) return false;
-
+  if (charCounter < 2) {
+    Serial.println(F("checkIncomingTextMessage: check 4 failed"));
+    return false;
+  }
+  
   return true;
 }
 
