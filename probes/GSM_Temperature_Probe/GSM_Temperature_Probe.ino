@@ -9,9 +9,9 @@
 char* messageIdHeartbeat = "HEARTBEAT";
 char* messageIdRestart = "RESTART";
 char* messageIdPayload = "PAYLOAD";
-const char phone[] = "+491784049573";
+//const char phone[] = "+491784049573";
 //const char phone[] = "+265884781634";
-//const char phone[] = "+265888288976";
+const char phone[] = "+265888288976";
 //const char phone[] = "+265881007201";
 
 // device configs
@@ -173,9 +173,19 @@ char* payloadValue1(char* v) {
   Serial.print("payloadValue1 ");
   // analog temperature from grove
   char value[] = "     ";
+  
+  // read analog value X times and calc average of it
+  const int maxReadings = 20;
+  int readings[maxReadings];
+  int total = 0;
+  for (int i = 0; i < maxReadings; i++) {
+    total = total + analogRead(pinAnalogTemp); 
+    delay(100);
+  }
+  int average = total / maxReadings;
+  
   int B=3975;
-  int a=analogRead(pinAnalogTemp);
-  float resistance=(float)(1023-a)*10000/a;
+  float resistance=(float)(1023-average)*10000/average;
   float temperature=1/(log(resistance/10000)/B+1/298.15)-273.15;
   previousPayloadValue1=currentPayloadValue1;
   currentPayloadValue1 = temperature;
@@ -188,15 +198,13 @@ char* payloadValue1(char* v) {
 // GSM/GPRS shield specific code
 
 void gprs_setup() {
-  //gprs_powerUpOrDown();
   delay(500);
   if (gprs_alreadyOn()) {
     // switch off and on again
     gprs_powerUpOrDown();
     delay(1000);
     gprs_powerUpOrDown();
-  } 
-  else {
+  } else {
     gprs_powerUpOrDown();
   }
 
@@ -274,8 +282,7 @@ char* formatNumber(char* number, int digits){
   if(digits < 10) {
     strcpy(number, "0");
     strcat(number, tmp);
-  } 
-  else {
+  } else {
     strcpy(number, tmp);
   }
   return number;
@@ -295,5 +302,4 @@ char* ftoa(char *a, float f, int precision)
   itoa(desimal, a, 10);
   return ret;
 }
-
 
