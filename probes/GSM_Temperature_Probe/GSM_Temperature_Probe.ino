@@ -1,34 +1,18 @@
 #include <EEPROM.h>
-
-#include <MemoryFree.h>
-
 #include <SPI.h>
-
-#include <Dhcp.h>
-#include <Dns.h>
-#include <Ethernet.h>
-#include <EthernetClient.h>
-#include <EthernetServer.h>
-#include <EthernetUdp.h>
 #include <util.h>
-#include <ICMPPing.h>
-
 #include <TimeAlarms.h>
-
 #include <Time.h>
-
 #include <SoftwareSerial.h>
 
 // base configs and vars
 char* messageIdHeartbeat = "HEARTBEAT";
 char* messageIdRestart = "RESTART";
 char* messageIdPayload = "PAYLOAD";
-//const char phone[] = "+4915259723556";
+const char phone[] = "+491784049573";
 //const char phone[] = "+265884781634";
 //const char phone[] = "+265888288976";
-const char phone[] = "+265881007201";
-//String phone = "+491784049573";
-
+//const char phone[] = "+265881007201";
 
 // device configs
 //water configs deviceID="3"
@@ -245,7 +229,6 @@ boolean gprs_alreadyOn() {
   return on;
 }
 
-
 void gprs_sendTextMessage(String number, char* message) {
   Serial.print("sendTextMessage: ");
   Serial.println(message);
@@ -302,7 +285,7 @@ char* ftoa(char *a, float f, int precision)
 {
   // slightly wrong sometimes, e.g. 23.04 results in 23.4
   long p[] = {
-    0,10,100,1000,10000,100000,1000000,10000000,100000000    };
+    0,10,100,1000,10000,100000,1000000,10000000,100000000      };
   char *ret = a;
   long heiltal = (long)f;
   itoa(heiltal, a, 10);
@@ -312,4 +295,5 @@ char* ftoa(char *a, float f, int precision)
   itoa(desimal, a, 10);
   return ret;
 }
+
 
