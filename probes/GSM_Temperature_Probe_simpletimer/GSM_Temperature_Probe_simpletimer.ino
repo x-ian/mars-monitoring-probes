@@ -177,12 +177,42 @@ char* measureAnalogTemperatureFromGrove(char* v) {
 // GSM/GPRS shield specific code
 
 void gprs_setup() {
-  gprs_powerUpOrDown();
-  delay(500);
-  gprs.begin(19200); // the default GPRS baud rate   
-  delay(500);
-  //gprs_setTime();
-  delay(500);
+ //gprs_powerUpOrDown();
+ delay(500);
+ if (gprs_alreadyOn()) {
+   // switch off and on again
+   gprs_powerUpOrDown();
+   delay(1000);
+   gprs_powerUpOrDown();
+ } else {
+   gprs_powerUpOrDown();
+ }
+
+ delay(500);
+ gprs.begin(19200); // the default GPRS baud rate
+ delay(500);
+ //gprs_setTime();
+ delay(500);
+}
+
+boolean gprs_alreadyOn() {
+ boolean on = false;
+ gprs.println("ATE0");
+ delay(500);
+ while (gprs.available() > 0) { gprs.read(); }
+ delay(500);
+ gprs.println("ATZ");
+ delay(500);
+ char c = ' ';
+ int i= 0;
+ while (gprs.available() > 0) {
+   c = gprs.read();
+   if (i == 0) on = true;
+   if (i == 2 && c != 'O') on = false;
+   if (i == 3 && c != 'K') on = false;
+   i++;
+ }
+ return on;
 }
 
 void gprs_sendTextMessage(String number, char* message) {
