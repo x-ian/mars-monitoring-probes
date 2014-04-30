@@ -31,12 +31,12 @@ void setup() {
   gsm.Echo(1);               //enable AT echo 
   Serial.println("system startup done"); 
   delay(10000);
-//  gboard_sendTextMessage("+491784049573", "Test message during startup");
-  gboard_sendTextMessage("+265884767251", "Test message during startup");
+  gboard_sendTextMessage("+491784049573", "Test message during startup");
+//  gboard_sendTextMessage("+265884767251", "Test message during startup");
 }
 
 void loop()
-{
+{  
   delay(60000);
 //  gboard_sendTextMessage("+491784049573", "Test message in loop");
 //  gboard_sendTextMessage("+265884767251", "Test message in loop");
