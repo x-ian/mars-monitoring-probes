@@ -20,7 +20,8 @@ http://cmikavac.net/2012/06/03/how-to-flash-tp-link-wr703n-with-openwrt/
 Only minor configs to the factory default are necessary if the TP-LINK
 should be hooked up wirelessly into the network.
 - Resetting (only works ~10 seconds after starting the TP-LINK) and connect
-  a LAN cabe.
+  a LAN cable (http://wiki.openwrt.org/doc/howto/generic.failsafe,
+  http://wiki.villagetelco.org/OpenWrt_Failsafe_Mode_and_Flash_Recovery).
 - Change default IP address of LAN (192.168.1.1) if it conflicts with your 
   WiFi network.
 - Scan for the Wifi and add as WAN interface
@@ -32,6 +33,7 @@ should be hooked up wirelessly into the network.
 - Run something like nmap -sP 192.168.1.0/24 in the WiFi network to find
   out which IP address was assigned to TP-LINK
 - opkg update
+  opkg install bash
   opkg install wget-nossl -force-overwrite 
     (as per http://gregklein.wordpress.com/tag/openwrt/)
 - Set proper timezone under System - System
