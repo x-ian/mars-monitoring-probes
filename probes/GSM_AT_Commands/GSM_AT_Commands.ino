@@ -22,17 +22,19 @@
 
 #include <SoftwareSerial.h>
 
-SoftwareSerial GPRS(7, 8);
+SoftwareSerial GPRS(2, 3); // for Gboard
+//SoftwareSerial GPRS(7, 8); // for GRPS shield with Arduino
 char buffer[64]; // buffer array for data recieve over serial port
 int count=0;     // counter for buffer array 
 void setup()
 {
-  GPRS.begin(19200);               // the GPRS baud rate   
-  Serial.begin(19200);             // the Serial port of Arduino baud rate.
+  GPRS.begin(9600);               // the GPRS baud rate   
+  Serial.begin(9600);             // the Serial port of Arduino baud rate.
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
   Serial.println("setup");
+  Serial.println("make sure auto echo from modem is on. if not, uncomment the Serial.print in loop()");
 }
 
 void loop()
@@ -48,8 +50,14 @@ void loop()
     clearBufferArray();              // call clearBufferArray function to clear the storaged data from the array
     count = 0;                       // set counter of while loop to zero
   }
-  if (Serial.available())            // if data is available on hardwareserial port ==> data is comming from PC or notebook
-    GPRS.write(Serial.read());       // write it to the GPRS shield
+  if (Serial.available()) {
+    char c = Serial.read(); // somehow the echo mode sometimes seems deactivated
+    Serial.print(c);        // this line ensure the chars are printed
+    GPRS.write(c);
+    // if data is available on hardwareserial port ==> data is comming from PC or notebook
+  }
+   // GPRS.write(Serial.read());       // write it to the GPRS shield
+   //
 }
 
 void clearBufferArray()              // function to clear buffer array
