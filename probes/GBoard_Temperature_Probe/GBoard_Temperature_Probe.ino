@@ -1,10 +1,13 @@
+#include <GSM_Shield.h>
+
+#include <GSM_Shield.h>
+
 #include <EEPROM.h>
 #include <SPI.h>
 #include <util.h>
 #include <TimeAlarms.h>
 #include <Time.h>
 #include <SoftwareSerial.h>
-#include <GSM_Shield.h>
 
 GSM gsm;
 
@@ -18,8 +21,8 @@ char phone[] = "+491784049573";
 //const char phone[] = "+265881007201";
 
 // device configs
-const char* customerId = "1";
-const char* probeId = "2";
+const char* customerId = "2";
+const char* probeId = "15";
 
 // device counters
 byte incomingMessageCount = 0;
@@ -33,7 +36,7 @@ int pinButton = 5;
 int pinGprsRx = 7;
 int pinGrpsTx = 8;
 int pinGprsPower = 9;
-SoftwareSerial gprs(7, 8);
+SoftwareSerial gprs(2, 3);
 
 // probe values
 float currentValue1 = 0;
@@ -50,7 +53,7 @@ const int incomingMessageCountAdr = 2;
 void setup() {
   Serial.begin(19200);
   delay(5000);
-  Serial.println("setup");
+  Serial.println(F("setup"));
 
   //oneTimeEepromInit();
   eepromRead();
@@ -65,7 +68,7 @@ void setup() {
   measure(); // make sure the restart message already has the values
   restart();
 
-  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
+  Alarm.timerRepeat(60, heartbeat); // 14400 sec = 4 h
 
   // init board layout  
   //pinMode(pinButton, INPUT);
@@ -73,7 +76,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("loop ");
+  Serial.print(F("loop "));
   measure();
   Serial.print(previousValue1);
   Serial.print(" -> ");
@@ -113,7 +116,7 @@ void measure() {
 void alarm() {
   char m[50];
   message(m, messageIdAlarm);
-  gboard_sendTextMessage(phone, m);
+  gprs_sendMessage(m);
   outgoingMessageCount++;
   EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
 }
@@ -121,7 +124,7 @@ void alarm() {
 void restart() {
   char m[50];
   message(m, messageIdRestart);
-  gboard_sendTextMessage(phone, m);
+  gprs_sendMessage(m);
   restartCount++;
   outgoingMessageCount++;
   EEPROM.write(restartCountAdr, restartCount);
@@ -131,7 +134,7 @@ void restart() {
 void heartbeat() {
   char m[50];
   message(m, messageIdHeartbeat);
-  gboard_sendTextMessage(phone, m);
+  gprs_sendMessage(m);
   outgoingMessageCount++;
   EEPROM.write(outgoingMessageCountAdr, outgoingMessageCount);
 }
@@ -163,7 +166,7 @@ char* message(char* m, char* messageId) {
 }
 
 char* payloadValue1(char* v) {
-  Serial.print("payloadValue1 ");
+  Serial.print(F("payloadValue1 "));
   // analog temperature from grove
   char value[] = "     ";
   
@@ -194,24 +197,61 @@ boolean initGsm() {
   gsm.TurnOn(9600);              //module power on
   gsm.InitParam(PARAM_SET_1);//configure the module  
   gsm.Echo(1);               //enable AT echo 
+  delay(30000);
+  gprs_connect();
   return true;
 }
 
-boolean gboard_sendTextMessage(char* number, char* message) {
-  Serial.print(F("Send SMS to "));
-  Serial.println(number);
-  Serial.println(message);
-  char error = gsm.SendSMS(number, message);  
-  if (error == 1) {
-    Serial.println(F("SMS OK"));
-    return true;
-  } 
-  else {
-    Serial.print(error);
-    Serial.println(F(" SMS ERROR"));
-    return false;
-  }
-}  
+void gprs_sendMessage(char *message) {
+  Serial.print(F("gprs_sendMessage: "));
+
+  gprs_httpPost("", 80, "", message);
+}
+
+void gprs_connect() {
+  Serial.println(F("init GPRS data"));
+  gboard_printATCommand("AT+SAPBR=3,2,\"CONTYPE\",\"GPRS\"");
+  gboard_printATCommand("AT+SAPBR=3,2,\"APN\",\"internet\"");
+  gboard_printATCommand("AT+SAPBR=1,2");
+  Serial.println(F("init GPRS data done"));
+}
+
+void gprs_httpPost(char *server, int port, char *url, char* d) {
+  
+  gboard_printATCommand("AT+HTTPINIT");
+  gboard_printATCommand("AT+HTTPPARA=\"CID\",2");
+  gboard_printATCommand("AT+HTTPPARA=\"URL\",\"http://www.marsmonitoring.com/messages/create_from_probe\"");
+
+  char data[80] = "";
+  strcpy(data, "message%5Bdata%5D="); // json not possible with SIM 900, so use old style 
+  strcat(data, d);
+
+  String ss = "";
+  ss += strlen(data);
+  char ssid[ss.length() + 1]; 
+  ss.toCharArray(ssid, ss.length() + 1);
+  
+  char httpdata[25] = "";
+  strcpy(httpdata, "AT+HTTPDATA=");
+  strcat(httpdata, ssid);
+  strcat(httpdata, ",10000");
+  gboard_printATCommand(httpdata);
+  delay(1000);
+  gboard_printATCommand(data);
+  delay(2000);
+
+  gboard_printATCommand("AT+HTTPACTION=1");
+  delay(10000);
+//  gboard_printATCommand("AT+HTTPACTION=1");
+//  delay(10000);
+  gboard_printATCommand("AT+HTTPTERM");
+}
+
+void gboard_printATCommand(char* command) {
+  Serial.println(command);
+  gsm.SendATCmdWaitResp(command, 1000, 50, "OK", 1);
+  delay(1000);
+}
 
 // *****************************************************************
 // Helpers
