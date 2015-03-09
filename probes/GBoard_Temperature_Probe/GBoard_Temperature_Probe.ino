@@ -1,7 +1,5 @@
 #include <GSM_Shield.h>
 
-#include <GSM_Shield.h>
-
 #include <EEPROM.h>
 #include <SPI.h>
 #include <util.h>
@@ -31,11 +29,6 @@ byte restartCount = 0;
 
 // device board layout
 int pinAnalogTemp = 0;
-int pinLed = 3;
-int pinButton = 5;
-int pinGprsRx = 7;
-int pinGrpsTx = 8;
-int pinGprsPower = 9;
 SoftwareSerial gprs(2, 3);
 
 // probe values
@@ -68,11 +61,10 @@ void setup() {
   measure(); // make sure the restart message already has the values
   restart();
 
-  Alarm.timerRepeat(60, heartbeat); // 14400 sec = 4 h
+  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
 
   // init board layout  
-  //pinMode(pinButton, INPUT);
-  //pinMode(pinLed, OUTPUT); 
+  pinMode(pinAnalogTemp, INPUT);
 }
 
 void loop() {
@@ -197,23 +189,30 @@ boolean initGsm() {
   gsm.TurnOn(9600);              //module power on
   gsm.InitParam(PARAM_SET_1);//configure the module  
   gsm.Echo(1);               //enable AT echo 
-  delay(30000);
-  gprs_connect();
   return true;
 }
 
 void gprs_sendMessage(char *message) {
   Serial.print(F("gprs_sendMessage: "));
-
+  gprs_disconnect();
+  delay(10000);
+  gprs_connect();
+  delay(10000);
   gprs_httpPost("", 80, "", message);
 }
 
 void gprs_connect() {
   Serial.println(F("init GPRS data"));
+  delay(30000); // give it time to connect
   gboard_printATCommand("AT+SAPBR=3,2,\"CONTYPE\",\"GPRS\"");
   gboard_printATCommand("AT+SAPBR=3,2,\"APN\",\"internet\"");
   gboard_printATCommand("AT+SAPBR=1,2");
   Serial.println(F("init GPRS data done"));
+}
+
+void gprs_disconnect() {
+  Serial.println(F("disconnect GPRS data"));
+  gboard_printATCommand("AT+SAPBR=0,2");
 }
 
 void gprs_httpPost(char *server, int port, char *url, char* d) {
@@ -242,8 +241,6 @@ void gprs_httpPost(char *server, int port, char *url, char* d) {
 
   gboard_printATCommand("AT+HTTPACTION=1");
   delay(10000);
-//  gboard_printATCommand("AT+HTTPACTION=1");
-//  delay(10000);
   gboard_printATCommand("AT+HTTPTERM");
 }
 
