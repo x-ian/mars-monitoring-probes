@@ -2,7 +2,7 @@
 
 #include <EEPROM.h>
 #include <SPI.h>
-#include <util.h>
+//#include <util.h>
 #include <TimeAlarms.h>
 #include <Time.h>
 #include <SoftwareSerial.h>
@@ -13,32 +13,31 @@ GSM gsm;
 char* messageIdHeartbeat = "HEARTBEAT";
 char* messageIdRestart = "RESTART";
 char* messageIdAlarm = "ALARM";
-char phone[] = "+491784049573";
-//const char phone[] = "+265884781634";
-//const char phone[] = "+265888288976";
-//const char phone[] = "+265881007201";
-
-// device configs
-const char* customerId = "2";
-const char* probeId = "15";
 
 // device counters
 byte incomingMessageCount = 0;
 byte outgoingMessageCount = 0;
 byte restartCount = 0;
 
-// device board layout
-int pinAnalogTemp = 0;
 SoftwareSerial gprs(2, 3);
 
 // probe values
 float currentValue1 = 0;
 float previousValue1 = 0;
-const float alarm1Threshold = 23;
 
 const int restartCountAdr = 0;
 const int outgoingMessageCountAdr = 1;
 const int incomingMessageCountAdr = 2;
+
+// *******************************************************
+// CHANGE ME
+// device configs
+const char* customerId = "2";
+const char* probeId = "15";
+// device board layout
+int pinAnalogTemp = 0;
+const float alarm1Threshold = 23;
+const int heartbeatIntervall = 14400;  // 14400 sec = 4 h
 
 // *******************************************************
 // arduino methods
@@ -51,18 +50,19 @@ void setup() {
   //oneTimeEepromInit();
   eepromRead();
   
-  setTime(23,59,59,24,12,2011); // just to begin with something
+  setTime(23,59,59,24,12,2016); // just to begin with something
   if (!initGsm()) {
     Serial.println(F("Error during GSM initialization"));
   }
 
   // wait 1 minute before sending out restart message
   delay(60000);
-  measure(); // make sure the restart message already has the values
+  //measure(); // make sure the restart message already has the values
   restart();
 
-  Alarm.timerRepeat(14400, heartbeat); // 14400 sec = 4 h
+  Alarm.timerRepeat(heartbeatIntervall, heartbeat);
 
+  // CHANGE ME: 
   // init board layout  
   pinMode(pinAnalogTemp, INPUT);
 }
@@ -155,31 +155,6 @@ char* message(char* m, char* messageId) {
   strcat(m, ",");
   strcat(m, ",");
   return m;
-}
-
-char* payloadValue1(char* v) {
-  Serial.print(F("payloadValue1 "));
-  // analog temperature from grove
-  char value[] = "     ";
-  
-  // read analog value X times and calc average of it
-  const int maxReadings = 20;
-  int readings[maxReadings];
-  int total = 0;
-  for (int i = 0; i < maxReadings; i++) {
-    total = total + analogRead(pinAnalogTemp); 
-    delay(100);
-  }
-  int average = total / maxReadings;
-  
-  int B=3975;
-  float resistance=(float)(1023-average)*10000/average;
-  float temperature=1/(log(resistance/10000)/B+1/298.15)-273.15;
-  previousValue1=currentValue1;
-  currentValue1 = temperature;
-  ftoa(value, temperature, 2);
-  strcpy(v, value);
-  return v;
 }
 
 // *******************************************************
@@ -290,4 +265,34 @@ char* ftoa(char *a, float f, int precision) {
   itoa(desimal, a, 10);
   return ret;
 }
+
+// *****************************************************************
+// Collect values from sensors
+// CHANGE ME
+
+char* payloadValue1(char* v) {
+  Serial.print(F("payloadValue1 "));
+  // analog temperature from grove
+  char value[] = "     ";
+  
+  // read analog value X times and calc average of it
+  const int maxReadings = 20;
+  int readings[maxReadings];
+  int total = 0;
+  for (int i = 0; i < maxReadings; i++) {
+    total = total + analogRead(pinAnalogTemp); 
+    delay(100);
+  }
+  int average = total / maxReadings;
+  
+  int B=3975;
+  float resistance=(float)(1023-average)*10000/average;
+  float temperature=1/(log(resistance/10000)/B+1/298.15)-273.15;
+  previousValue1=currentValue1;
+  currentValue1 = temperature;
+  ftoa(value, temperature, 2);
+  strcpy(v, value);
+  return v;
+}
+
 
