@@ -16,3 +16,5 @@ if [ "$HTTP_UNIT" == "MB/s" ]; then
 fi
 		
 /root/mars/create_message.sh heartbeat customer_id 11 1 1 $TIME $PING $HTTP_SPEED 
+
+rm -f create_from_probe*
