@@ -42,6 +42,6 @@ should be hooked up wirelessly into the network.
   # run this script every hour
   01 * * * * /root/mars/measure_network_speed.sh > /dev/null
 
-Try 192.168.2.1 as IP for LAN access with root/root.
+Try 192.168.2.1 (or 99?) as IP for LAN access with root/root.
 
 Change /etc/config/wireless with updated WiFi settings; run scan from Web-UI first to detect all available networks.
