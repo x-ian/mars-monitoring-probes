@@ -1,5 +1,7 @@
 #!/bin/sh
 
+sleep 60
+
 # measure PING and HTTP speed and post to marsmonitoring.com
 
 TIME=$(date +%Y%m%d-%H%M%S)
