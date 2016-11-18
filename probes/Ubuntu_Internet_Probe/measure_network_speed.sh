@@ -6,6 +6,8 @@
 
 PATH=$PATH:/bin:/usr/bin
 source $(dirname "$0")/config.txt
+source $(dirname "$0")/counter_restarts.txt
+source $(dirname "$0")/counter_outgoing_messages.txt
 
 TIME=$(date +%Y%m%d-%H%M%S)
 
@@ -18,6 +20,8 @@ if [ "$HTTP_UNIT" == "MB/s" ]; then
 	HTTP_SPEED=$(awk 'BEGIN {OFMT="%.2f";print ("'"$HTTP_SPEED"'" * 1000) }')
 fi
 			
-$(dirname "$0")/create_message.sh heartbeat $CUSTOMER_ID $PROBE_ID 1 1 $TIME $PING $HTTP_SPEED 
+$(dirname "$0")/create_message.sh heartbeat $CUSTOMER_ID $PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $PING $HTTP_SPEED 
 
 rm -f create_from_probe*
+((OUTGOING_MESSAGE_COUNTER++))
+echo "OUTGOING_MESSAGE_COUNTER=$OUTGOING_MESSAGE_COUNTER" > $(dirname "$0")/counter_outgoing_messages.txt
