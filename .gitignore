@@ -1,1 +1,4 @@
 .DS_Store
+probes/Ubuntu_Internet_Probe/config.txt
+probes/Ubuntu_Internet_Probe/counter_restarts.txt
+probes/Ubuntu_Internet_Probe/counter_outgoing_messages.txt
