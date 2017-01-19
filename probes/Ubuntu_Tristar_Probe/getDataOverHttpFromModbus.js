@@ -358,7 +358,7 @@ function ajaxget(M, H, D, G, F) {
   var B = encodeURIComponent(parseInt(H) & 255);
   var J = encodeURIComponent(parseInt(D) >> 8);
   var K = encodeURIComponent(parseInt(D) & 255);
-  I.open("GET", "http://192.168.2.10/MBCSV.cgi?ID=" + A + "&F=" + C + "&AHI=" + N + "&ALO=" + B + "&RHI=" + J + "&RLO=" + K, F);
+  I.open("GET", "http://192.168.0.11/MBCSV.cgi?ID=" + A + "&F=" + C + "&AHI=" + N + "&ALO=" + B + "&RHI=" + J + "&RLO=" + K, F);
   I.send(null);
   if (!F) {
     E = I.responseText
