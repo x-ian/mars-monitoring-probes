@@ -27,7 +27,7 @@ case $BAT_CHARGE_STATE in
   "Equalize") status="7" ;;
   "Fault") status="10" ;;
   "Disconnect") status="0" ;;
-  *) status=$status ;;
+  *) status="-1" ;;
 esac
 BAT_CHARGE_STATE=$status
 BAT_CHARGE_CURRENT=$(cat bat-charge-current-39)
@@ -41,6 +41,29 @@ ARRAY_PMAX=$(cat array-pmax-60)
 ARRAY_VMP=$(cat array-vmp-61)
 
 $BASEDIR/create_message.sh heartbeat $CUSTOMER_ID $PV_PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $ARRAY_VOLTAGE $ARRAY_CURRENT $ARRAY_PMAX $ARRAY_VMP
+
+BAT_TEMP=$(cat temp-bat-37)
+HEATSINK_TEMP=$(cat temp-heatsink-35)
+BAT_TARGET_VOLTAGE=$(cat bat-target-voltage-51)
+
+$BASEDIR/create_message.sh heartbeat $CUSTOMER_ID $TRISTAR_PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $BAT_TEMP $HEATSINK_TEMP $BAT_TARGET_VOLTAGE
+
+COUNTERS_AMPHOURS=$(cat array-pmax-60)
+COUNTERS_KWH=$(cat array-vmp-61)
+ALARMS=$(cat error-alarms-46)
+case $ALARMS in
+  "None") status="0" ;;
+  *) status=$ALARMS ;;
+esac
+ALARMS=$status
+FAULTS=$(cat error-faults-44)
+case $FAULTS in
+  "None") status="0" ;;
+  *) status=$FAULTS ;;
+esac
+FAULTS=$status
+
+$BASEDIR/create_message.sh heartbeat $CUSTOMER_ID $PV_PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $COUNTERS_AMPHOURS $COUNTERS_KWH $ALARMS $FAULTS
 
 rm -f create_from_probe*
 ((OUTGOING_MESSAGE_COUNTER++))
