@@ -396,7 +396,7 @@ function EnumTextDisplayClass(B, C, G, F, D, H, A, E) {
    var E = parseInt(MBJSReadModbusInts(MBP, this.MBID.toString(), this.MBaddress.toString(), "1"));
    E <<= 16;
    E >>= 16;
-   return E.toString() + " \u00B0C";  
+   return E.toString();  
  }
 
  function BitFieldTextDisplayClass(I, D, B, E, C, F, G, H, A) {
