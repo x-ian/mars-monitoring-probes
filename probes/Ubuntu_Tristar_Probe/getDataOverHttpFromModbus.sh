@@ -48,8 +48,8 @@ BAT_TARGET_VOLTAGE=$(cat bat-target-voltage-51)
 
 $BASEDIR/create_message.sh heartbeat $CUSTOMER_ID $TRISTAR_PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $BAT_TEMP $HEATSINK_TEMP $BAT_TARGET_VOLTAGE
 
-COUNTERS_AMPHOURS=$(cat array-pmax-60)
-COUNTERS_KWH=$(cat array-vmp-61)
+COUNTERS_AMPHOURS=$(cat counters-amphours-52)
+COUNTERS_KWH=$(cat counters-kwh-56)
 ALARMS=$(cat error-alarms-46)
 case $ALARMS in
   "None") status="0" ;;
