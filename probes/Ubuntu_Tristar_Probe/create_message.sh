@@ -23,4 +23,4 @@ VALUES=\"message\":{\"data\":\"$MESSAGE_TYPE_ID,$CUSTOMER_ID,$PROBE_ID,$OUTGOING
 #VALUES=\"message\":{\"data\":\"PAYLOAD,2,5,103,114,20111225-001412,14,16468,,\"}
 
 #curl -v -H "Accept: application/json" -H "Content-type: application/json" -X POST -d " {`echo $VALUES`}" $URL
-wget -v --header "Accept: application/json" --header "Content-type: application/json" --post-data="{`echo $VALUES`}" $URL
+wget --timeout=5 --tries=3 -v --header "Accept: application/json" --header "Content-type: application/json" --post-data="{`echo $VALUES`}" $URL
