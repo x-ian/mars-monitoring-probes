@@ -24,7 +24,7 @@ make sure jumpers are in ST-D2, SR-D3 ('Software UART   to SIM900,  Hardware UAR
 GSM gsm;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(19200);
   Serial.println("system startup"); 
   gsm.TurnOn(9600);              //module power on
   gsm.InitParam(PARAM_SET_1);//configure the module  
