@@ -12,6 +12,7 @@ PATH=$PATH:/bin:/usr/bin
 BASEDIR=$(dirname `realpath $0`)
 
 source $BASEDIR/config.txt
+source $BASEDIR/counter_restarts.txt
 source $BASEDIR/counter_outgoing_messages.txt
 
 TIME=$(date +%Y%m%d-%H%M%S)
