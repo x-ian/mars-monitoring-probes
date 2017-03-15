@@ -13,11 +13,13 @@ VALUE1=${7}
 VALUE2=${8}
 VALUE3=${9}
 VALUE4=${10}
+VALUE5=${11}
+VALUE6=${12}
 
 #URL=http://localhost:3000/messages/create_from_probe
 URL=http://www.marsmonitoring.com/messages/create_from_probe
 
-VALUES=\"message\":{\"data\":\"$MESSAGE_TYPE_ID,$CUSTOMER_ID,$PROBE_ID,$OUTGOING_MESSAGE_COUNT,$RESTART_COUNT,$DEVICE_TIME,$VALUE1,$VALUE2,$VALUE3,$VALUE4\"}
+VALUES=\"message\":{\"data\":\"$MESSAGE_TYPE_ID,$CUSTOMER_ID,$PROBE_ID,$OUTGOING_MESSAGE_COUNT,$RESTART_COUNT,$DEVICE_TIME,$VALUE1,$VALUE2,$VALUE3,$VALUE4,$VALUE5,$VALUE6,,,,,,,,,\"}
 
 #VALUES=\"message\":{\"data\":\"PAYLOAD,1,38,103,114,20111225-001412,14,16468,,\"}
 #VALUES=\"message\":{\"data\":\"PAYLOAD,2,5,103,114,20111225-001412,14,16468,,\"}
