@@ -25,11 +25,11 @@ TIME=$(date +%Y%m%d-%H%M%S)
 #<td>0 MB</td>
 #<td>Aug 01 14:00 2017</td>
 
-EXPIRY_DATE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A2 "Data Me2U" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+EXPIRY_DATE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A2 "Data Me2U" | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
 
-DATA=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Data Me2U" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+DATA=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Data Me2U" | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
 
-BALANCE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Credit balance" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+BALANCE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Credit balance" | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
 
 
 $BASEDIR/create_message.sh $MESSAGE_TYPE $CUSTOMER_ID $PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $BALANCE $DATA $EXPIRY_DATE
