@@ -17,20 +17,22 @@ source $BASEDIR/counter_outgoing_messages.txt
 
 TIME=$(date +%Y%m%d-%H%M%S)
 
-ping -qc 10 192.168.0.21
-PING_1=$?
-ping -qc 10 192.168.0.22
-PING_2=$?
-ping -qc 10 192.168.0.23
-PING_3=$?
-ping -qc 10 192.168.0.24
-PING_4=$?
-ping -qc 10 192.168.0.25
-PING_5=$?
-ping -qc 10 192.168.0.11
-PING_6=$?
+# <td>Credit balance</td>
+# <td>MK 0.0</td>
+# <td></td>
+#
+#<td>Data Me2U</td>
+#<td>0 MB</td>
+#<td>Aug 01 14:00 2017</td>
 
-$BASEDIR/create_message.sh $MESSAGE_TYPE $CUSTOMER_ID $PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $PING_1 $PING_2 $PING_3 $PING_4 $PING_5 $PING_6
+EXPIRY_DATE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A2 "Data Me2U" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+
+DATA=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Data Me2U" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+
+BALANCE=`curl -s http://aoc.mw.airtellive.com/balance | grep -A1 "Credit balance" balance | tail -1 | sed 's/<\/td>//' | sed 's/<td>//' | sed 's/MK //' | sed 's/ MB//' | awk '{$1=$1};1'`
+
+
+$BASEDIR/create_message.sh $MESSAGE_TYPE $CUSTOMER_ID $PROBE_ID $OUTGOING_MESSAGE_COUNTER $RESTART_COUNTER $TIME $BALANCE $DATA $EXPIRY_DATE
 
 rm -f create_from_probe*
 ((OUTGOING_MESSAGE_COUNTER++))
