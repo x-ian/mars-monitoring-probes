@@ -42,6 +42,16 @@ should be hooked up wirelessly into the network.
   # run this script every hour
   01 * * * * /root/mars/measure_network_speed.sh > /dev/null
 
-Try 192.168.2.1 (or 99?) as IP for LAN access with root/root.
+Use 192.168.99.1 as IP for LAN access with root/root. This interface should have DHCP enabled.
 
 Change /etc/config/wireless with updated WiFi settings; run scan from Web-UI first to detect all available networks.
+
+Allow remote SSH access (via WAN) with this addition to /etc/config/firewall:
+config rule
+	option target 'ACCEPT'
+	option src 'wan'
+	option proto 'tcp'
+	option family 'ipv4'
+	option name 'dropbear ssh WAN'
+	option dest_port '22' #or whatever port dropbear is listening
+
