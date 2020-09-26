@@ -1,0 +1,253 @@
+[
+    {
+        "id": "6bf63e56.d47d8",
+        "type": "http request",
+        "z": "c82afe52.2130a",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": false,
+        "url": "http://www.marsmonitoring.com/messages/create_from_probe",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 530,
+        "y": 460,
+        "wires": [
+            [
+                "d5bb05b2.c5b5b8"
+            ]
+        ]
+    },
+    {
+        "id": "3da9b863.7e0e48",
+        "type": "function",
+        "z": "c82afe52.2130a",
+        "name": "headers for mars",
+        "func": "msg.headers = {};\nmsg.headers['Content-typ'] = 'application/json';\nmsg.headers['Accept'] = 'application/json';\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 420,
+        "wires": [
+            [
+                "6bf63e56.d47d8",
+                "d5bb05b2.c5b5b8"
+            ]
+        ]
+    },
+    {
+        "id": "1907bc42.90b984",
+        "type": "function",
+        "z": "c82afe52.2130a",
+        "name": "payload for mars",
+        "func": "var d = new Date();\nvar date = [\n  d.getFullYear(),\n  ('0' + (d.getMonth() + 1)).slice(-2),\n  ('0' + d.getDate()).slice(-2)\n].join('');\nvar time = [\n  ('0' + (d.getHours() + 1)).slice(-2),\n  ('0' + d.getMinutes()).slice(-2),\n  ('0' + d.getSeconds()).slice(-2),\n].join('');\n\nvar m = { \"message\": \n    {\n        \"data\": msg.messageType + ',' + msg.customerId + ',' + msg.probeId + ',1,1,' + date + '-' + time + ',' + msg.payload + ',,,'\n    }\n}\nmsg.payload = m;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 380,
+        "wires": [
+            [
+                "3da9b863.7e0e48"
+            ]
+        ]
+    },
+    {
+        "id": "41bdd077.4899e",
+        "type": "change",
+        "z": "c82afe52.2130a",
+        "name": "probe for mars",
+        "rules": [
+            {
+                "t": "set",
+                "p": "customerId",
+                "pt": "msg",
+                "to": "1",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "probeId",
+                "pt": "msg",
+                "to": "47",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "messageType",
+                "pt": "msg",
+                "to": "heartbeat",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 340,
+        "wires": [
+            [
+                "1907bc42.90b984"
+            ]
+        ]
+    },
+    {
+        "id": "4a8b85cf.cd02fc",
+        "type": "mqtt in",
+        "z": "c82afe52.2130a",
+        "name": "",
+        "topic": "ESP_Easy_CO2_1/mhz19/PPM",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "aa4cb253.e3241",
+        "x": 210,
+        "y": 300,
+        "wires": [
+            [
+                "d5bb05b2.c5b5b8",
+                "41bdd077.4899e"
+            ]
+        ]
+    },
+    {
+        "id": "a7c4cf04.3e5cb",
+        "type": "change",
+        "z": "c82afe52.2130a",
+        "name": "probe for mars",
+        "rules": [
+            {
+                "t": "set",
+                "p": "customerId",
+                "pt": "msg",
+                "to": "1",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "probeId",
+                "pt": "msg",
+                "to": "48",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "messageType",
+                "pt": "msg",
+                "to": "heartbeat",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 420,
+        "wires": [
+            [
+                "1907bc42.90b984"
+            ]
+        ]
+    },
+    {
+        "id": "9c537e20.8fb5e",
+        "type": "mqtt in",
+        "z": "c82afe52.2130a",
+        "name": "",
+        "topic": "ESP_Easy_CO2_2/mhz19/PPM",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "aa4cb253.e3241",
+        "x": 210,
+        "y": 380,
+        "wires": [
+            [
+                "a7c4cf04.3e5cb"
+            ]
+        ]
+    },
+    {
+        "id": "65f024bd.6920bc",
+        "type": "change",
+        "z": "c82afe52.2130a",
+        "name": "probe for mars",
+        "rules": [
+            {
+                "t": "set",
+                "p": "customerId",
+                "pt": "msg",
+                "to": "1",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "probeId",
+                "pt": "msg",
+                "to": "49",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "messageType",
+                "pt": "msg",
+                "to": "heartbeat",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 260,
+        "y": 500,
+        "wires": [
+            [
+                "1907bc42.90b984"
+            ]
+        ]
+    },
+    {
+        "id": "7a8ebb06.e0abe4",
+        "type": "mqtt in",
+        "z": "c82afe52.2130a",
+        "name": "",
+        "topic": "ESP_Easy_CO2_3/mhz19/PPM",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "aa4cb253.e3241",
+        "x": 210,
+        "y": 460,
+        "wires": [
+            [
+                "65f024bd.6920bc"
+            ]
+        ]
+    },
+    {
+        "id": "aa4cb253.e3241",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "localhost",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    }
+]
