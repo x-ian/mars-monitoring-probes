@@ -52,7 +52,8 @@ const char* customerId = "1";
 const char* probeId = "52";
 
 // for Arduino
-const float alarm1Threshold = 0;
+const float alarm1Threshold = 100;
+
 const int heartbeatIntervall = 300000;  // 14400 sec = 4 h
 const int alarmIntervall = 10000;  // 14400 sec = 4 h
 // for ESP, only heartbeat, no alarm schedule for now
@@ -71,10 +72,10 @@ void setup() {
   do {
     int ret = sdp.init();
     if (ret == 0) {
-      Serial.print("init(): success\n");
+      Serial.print("init() of SDP810 success\n");
       break;
     } else {
-      Serial.print("init(): failed, ret = ");
+      Serial.print("init() of SDP810 failed, ret = ");
       Serial.println(ret);
       delay(1000);
     }
